@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import {
   BLACK_KEY_LENGTH_MM,
   BLACK_KEY_RAISE_MM,
@@ -26,25 +27,105 @@ export interface KeyboardRig {
   setHighlightEnabled(on: boolean): void;
 }
 
+/** Procedural ivory: vertical grain, edge occlusion, front lip shadow. */
+function makeWhiteAlbedo(): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#f3edde';
+  g.fillRect(0, 0, 256, 256);
+  // faint vertical ivory grain
+  for (let i = 0; i < 90; i++) {
+    const x = Math.floor(Math.random() * 256);
+    g.fillStyle = `rgba(${215 + Math.random() * 25}, ${208 + Math.random() * 22}, ${188 + Math.random() * 20}, ${0.05 + Math.random() * 0.07})`;
+    g.fillRect(x, 0, 1 + Math.random() * 2, 256);
+  }
+  // subtle warm aging toward one end (reads as fallboard shadow on tops)
+  const grad = g.createLinearGradient(0, 0, 0, 256);
+  grad.addColorStop(0, 'rgba(120, 100, 70, 0.10)');
+  grad.addColorStop(0.25, 'rgba(120, 100, 70, 0.0)');
+  grad.addColorStop(1, 'rgba(255, 255, 250, 0.05)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 256, 256);
+  // edge occlusion on all borders → dark seams between neighbouring keys
+  const edge = 18;
+  const eg = (x0: number, y0: number, x1: number, y1: number, horiz: boolean) => {
+    const gr = horiz ? g.createLinearGradient(x0, 0, x1, 0) : g.createLinearGradient(0, y0, 0, y1);
+    gr.addColorStop(0, 'rgba(30, 26, 18, 0.34)');
+    gr.addColorStop(1, 'rgba(30, 26, 18, 0)');
+    g.fillStyle = gr;
+    g.fillRect(horiz ? x0 : 0, horiz ? 0 : y0, horiz ? Math.abs(x1 - x0) : 256, horiz ? 256 : Math.abs(y1 - y0));
+  };
+  eg(0, 0, edge, 0, true);
+  eg(256, 0, 256 - edge, 0, true);
+  eg(0, 0, 0, edge, false);
+  eg(0, 256, 0, 256 - edge, false);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+function makeWhiteRoughness(): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d')!;
+  g.fillStyle = 'rgb(110, 110, 110)';
+  g.fillRect(0, 0, 128, 128);
+  // worn, glossier play zone in the middle
+  const rad = g.createRadialGradient(64, 78, 8, 64, 78, 70);
+  rad.addColorStop(0, 'rgba(70, 70, 70, 0.85)');
+  rad.addColorStop(1, 'rgba(120, 120, 120, 0)');
+  g.fillStyle = rad;
+  g.fillRect(0, 0, 128, 128);
+  for (let i = 0; i < 500; i++) {
+    const v = 95 + Math.floor(Math.random() * 40);
+    g.fillStyle = `rgba(${v},${v},${v},0.25)`;
+    g.fillRect(Math.random() * 128, Math.random() * 128, 2, 2);
+  }
+  return new THREE.CanvasTexture(c);
+}
+
+function makeBlackAlbedo(): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#131318';
+  g.fillRect(0, 0, 128, 128);
+  const grad = g.createLinearGradient(0, 0, 0, 128);
+  grad.addColorStop(0, 'rgba(255,255,255,0.07)');
+  grad.addColorStop(0.5, 'rgba(255,255,255,0)');
+  grad.addColorStop(1, 'rgba(0,0,0,0.28)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 128, 128);
+  for (let i = 0; i < 60; i++) {
+    g.fillStyle = `rgba(255,255,255,${0.015 + Math.random() * 0.02})`;
+    g.fillRect(Math.random() * 128, 0, 1, 128);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
 export function createKeyboard(): KeyboardRig {
   const group = new THREE.Group();
 
   const whiteMat = new THREE.MeshPhysicalMaterial({
-    color: 0xd8d0bc,
-    roughness: 0.42,
-    clearcoat: 0.28,
-    clearcoatRoughness: 0.38,
+    map: makeWhiteAlbedo(),
+    roughnessMap: makeWhiteRoughness(),
+    roughness: 1.0,
+    clearcoat: 0.55,
+    clearcoatRoughness: 0.26,
   });
   const blackMat = new THREE.MeshPhysicalMaterial({
-    color: 0x0b0b0d,
-    roughness: 0.22,
-    clearcoat: 0.8,
+    map: makeBlackAlbedo(),
+    roughness: 0.34,
+    clearcoat: 0.7,
     clearcoatRoughness: 0.18,
   });
 
-  const whiteGeo = new THREE.BoxGeometry(WHITE_W, WHITE_H, WHITE_L);
+  const whiteGeo = new RoundedBoxGeometry(WHITE_W, WHITE_H, WHITE_L, 2, 0.0011);
   whiteGeo.translate(0, -WHITE_H / 2, WHITE_L / 2); // origin at rear-top hinge
-  const blackGeo = new THREE.BoxGeometry(BLACK_W, BLACK_H + 0.02, BLACK_L);
+  const blackGeo = new RoundedBoxGeometry(BLACK_W, BLACK_H + 0.02, BLACK_L, 2, 0.0017);
   blackGeo.translate(0, (BLACK_H + 0.02) / 2 - 0.02, BLACK_L / 2);
 
   const whites: number[] = [];
@@ -57,8 +138,8 @@ export function createKeyboard(): KeyboardRig {
   blackMesh.castShadow = blackMesh.receiveShadow = true;
   group.add(whiteMesh, blackMesh);
 
-  const baseWhite = new THREE.Color(0xd8d0bc);
-  const baseBlack = new THREE.Color(0x0b0b0d);
+  const baseWhite = new THREE.Color(0xffffff); // albedo lives in the map
+  const baseBlack = new THREE.Color(0xffffff);
   for (let i = 0; i < whites.length; i++) whiteMesh.setColorAt(i, baseWhite);
   for (let i = 0; i < blacks.length; i++) blackMesh.setColorAt(i, baseBlack);
 
@@ -108,7 +189,6 @@ export function createKeyboard(): KeyboardRig {
     if (blackMesh.instanceColor) blackMesh.instanceColor.needsUpdate = true;
   }
 
-  // initial placement
   update(new Float32Array(KEY_COUNT), []);
 
   return {

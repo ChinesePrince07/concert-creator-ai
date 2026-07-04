@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import type { PoseFrame } from '../core/choreo/program';
 import type { Hand } from '../core/types';
 import { aimSegment, solveTwoBone } from './ik';
@@ -112,6 +113,63 @@ function joint(r: number, mat: THREE.Material): THREE.Mesh {
   return m;
 }
 
+/** mottled skin with a crease ring at the joint end (v≈0) of each phalanx */
+function makeSkinMap(base: THREE.Color): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d')!;
+  const css = (col: THREE.Color, a = 1) =>
+    `rgba(${Math.round(col.r * 255)},${Math.round(col.g * 255)},${Math.round(col.b * 255)},${a})`;
+  g.fillStyle = css(base);
+  g.fillRect(0, 0, 128, 128);
+  // gentle mottling
+  for (let i = 0; i < 320; i++) {
+    const v = (Math.random() - 0.5) * 0.09;
+    const col = base.clone().offsetHSL(0.003 * (Math.random() - 0.5), 0.02 * (Math.random() - 0.5), v * 0.35);
+    g.fillStyle = css(col, 0.18);
+    const r = 2 + Math.random() * 7;
+    g.beginPath();
+    g.arc(Math.random() * 128, Math.random() * 128, r, 0, Math.PI * 2);
+    g.fill();
+  }
+  // knuckle flush just above the crease (bottom of canvas = joint end)
+  const warm = base.clone().offsetHSL(-0.006, 0.06, -0.02);
+  let grad = g.createLinearGradient(0, 128, 0, 96);
+  grad.addColorStop(0, css(warm, 0.5));
+  grad.addColorStop(1, css(warm, 0));
+  g.fillStyle = grad;
+  g.fillRect(0, 96, 128, 32);
+  // crease ring
+  const crease = base.clone().multiplyScalar(0.62);
+  grad = g.createLinearGradient(0, 128, 0, 116);
+  grad.addColorStop(0.1, css(crease, 0.0));
+  grad.addColorStop(0.45, css(crease, 0.85));
+  grad.addColorStop(0.8, css(crease, 0.0));
+  g.fillStyle = grad;
+  g.fillRect(0, 116, 128, 12);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/** tapered phalanx extending along -Z, base (joint) at the origin */
+function taperedPhalanx(len: number, rBase: number, rTip: number, rounded: boolean): THREE.BufferGeometry {
+  const pts: THREE.Vector2[] = [
+    new THREE.Vector2(rBase * 0.82, 0),
+    new THREE.Vector2(rBase, len * 0.18),
+    new THREE.Vector2((rBase + rTip) * 0.52, len * 0.62),
+    new THREE.Vector2(rTip, len - rTip * (rounded ? 0.85 : 0.4)),
+  ];
+  if (rounded) {
+    pts.push(new THREE.Vector2(rTip * 0.62, len - rTip * 0.18), new THREE.Vector2(0.0008, len));
+  } else {
+    pts.push(new THREE.Vector2(rTip * 0.7, len), new THREE.Vector2(0.0008, len));
+  }
+  const geo = new THREE.LatheGeometry(pts, 12);
+  geo.rotateX(-Math.PI / 2);
+  return geo;
+}
+
 export function createPianist(characterId: CharacterId = 'nocturne'): PianistRig {
   const spec = CHARACTERS.find((c) => c.id === characterId) ?? CHARACTERS[CHARACTERS.length - 1];
   const body = new THREE.MeshPhysicalMaterial({
@@ -121,12 +179,29 @@ export function createPianist(characterId: CharacterId = 'nocturne'): PianistRig
     clearcoat: spec.id === 'nocturne' ? 0.35 : 0.08,
     clearcoatRoughness: 0.45,
   });
-  const skin = new THREE.MeshPhysicalMaterial({
-    color: spec.skinColor,
-    roughness: spec.skinRoughness,
-    metalness: spec.id === 'nocturne' ? 0.04 : 0.0,
-    clearcoat: spec.skinClearcoat,
-    clearcoatRoughness: 0.5,
+  const skinBase = new THREE.Color(spec.skinColor);
+  const skin = spec.face
+    ? new THREE.MeshPhysicalMaterial({
+        map: makeSkinMap(skinBase),
+        roughness: 0.58,
+        clearcoat: 0.14,
+        clearcoatRoughness: 0.5,
+        sheen: 0.55,
+        sheenRoughness: 0.6,
+        sheenColor: skinBase.clone().lerp(new THREE.Color(0xffffff), 0.35),
+      })
+    : new THREE.MeshPhysicalMaterial({
+        color: spec.skinColor,
+        roughness: spec.skinRoughness,
+        metalness: 0.04,
+        clearcoat: spec.skinClearcoat,
+        clearcoatRoughness: 0.5,
+      });
+  const nailMat = new THREE.MeshPhysicalMaterial({
+    color: skinBase.clone().lerp(new THREE.Color(0xfff3e4), 0.55),
+    roughness: 0.22,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.12,
   });
   const accent = new THREE.MeshPhysicalMaterial({
     color: spec.accentColor,
@@ -333,11 +408,16 @@ export function createPianist(characterId: CharacterId = 'nocturne'): PianistRig
 
     const hand = new THREE.Group();
     group.add(hand); // world-space driven
-    const palm = new THREE.Mesh(new THREE.SphereGeometry(0.047, 18, 14), skin);
-    palm.scale.set(0.92, 0.36, 1.35);
-    palm.position.set(0, -0.006, -0.045);
+    const palm = new THREE.Mesh(new RoundedBoxGeometry(0.075 * bulk, 0.026, 0.093, 2, 0.011), skin);
+    palm.position.set(0, -0.006, -0.044);
     palm.castShadow = true;
     hand.add(palm);
+    // knuckle ridge blending palm into the fingers
+    const ridge = new THREE.Mesh(new THREE.CapsuleGeometry(0.0125, 0.062 * bulk, 4, 10), skin);
+    ridge.rotation.z = Math.PI / 2;
+    ridge.position.set(0, -0.0015, -0.082);
+    ridge.castShadow = true;
+    hand.add(ridge);
 
     const fingers: FingerChain[] = [];
     const spread = [
@@ -356,21 +436,32 @@ export function createPianist(characterId: CharacterId = 'nocturne'): PianistRig
         yawG.rotation.y = side * 0.85;
         yawG.rotation.z = side * -0.5;
       }
+      const rProx = (s.thumb ? 0.0105 : 0.0094) * bulk;
+      const rMid = 0.0079 * bulk;
+      const rDist = 0.0067 * bulk;
+      const rTip = 0.0052 * bulk;
+
       const mcp = new THREE.Group();
       yawG.add(mcp);
-      mcp.add(knuckle(0.0092));
-      const b1 = boneZ(s.l[0], 0.008);
-      mcp.add(b1);
+      mcp.add(knuckle(rProx * 1.05)); // only the MCP keeps a knuckle, embedded
+      mcp.add(seg(s.l[0], rProx, rMid));
       const pip = new THREE.Group();
       pip.position.z = -s.l[0];
       mcp.add(pip);
-      pip.add(knuckle(0.0078));
-      pip.add(boneZ(s.l[1], 0.0071));
+      pip.add(seg(s.l[1], rMid * 0.99, rDist));
       const dip = new THREE.Group();
       dip.position.z = -s.l[1];
       pip.add(dip);
-      dip.add(knuckle(0.0068));
-      dip.add(boneZ(s.l[2], 0.0062, true));
+      dip.add(seg(s.l[2], rDist * 0.97, rTip, true));
+      if (spec.face) {
+        const nail = new THREE.Mesh(
+          new RoundedBoxGeometry(rTip * 1.7, 0.001, rTip * 2.3, 1, 0.0005),
+          nailMat,
+        );
+        nail.position.set(0, rTip * 0.62, -(s.l[2] - rTip * 1.15));
+        nail.rotation.x = -0.14;
+        dip.add(nail);
+      }
       fingers.push({ yaw: yawG, mcp, pip, dip, lengths: s.l });
     }
     return { shoulder, elbow, elbowBall, hand, fingers, side: side as 1 | -1 };
@@ -380,11 +471,8 @@ export function createPianist(characterId: CharacterId = 'nocturne'): PianistRig
       k.castShadow = true;
       return k;
     }
-    function boneZ(len: number, r: number, tip = false): THREE.Mesh {
-      const geo = new THREE.CapsuleGeometry(r, Math.max(0.001, len - (tip ? r : 2 * r)), 5, 12);
-      geo.rotateX(Math.PI / 2); // capsule axis Y -> Z
-      geo.translate(0, 0, -len / 2);
-      const mesh = new THREE.Mesh(geo, skin);
+    function seg(len: number, rBase: number, rEnd: number, rounded = false): THREE.Mesh {
+      const mesh = new THREE.Mesh(taperedPhalanx(len, rBase, rEnd, rounded), skin);
       mesh.castShadow = true;
       return mesh;
     }

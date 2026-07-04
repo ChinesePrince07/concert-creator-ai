@@ -160,6 +160,13 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
   handGlowL.visible = handGlowR.visible = false;
   scene.add(handGlowL, handGlowR);
 
+  // soft front fill so skin and key fronts model properly in the classic view
+  const frontFill = new THREE.DirectionalLight(0xf2f4f8, 0.55);
+  frontFill.position.set(0, 2.6, 2.4);
+  frontFill.target.position.set(0, 0.74, 0);
+  frontFill.visible = false;
+  scene.add(frontFill, frontFill.target);
+
   // volumetric cones under the two hero spots
   const coneMat = () =>
     new THREE.ShaderMaterial({
@@ -313,6 +320,7 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
     rim.visible = !classicTop;
     keysAccent.visible = !classicTop;
     bounce.visible = !classicTop;
+    frontFill.visible = classicTop;
     // extra readable fill over the keys in roll modes; theatrical rig stays on
     if (!classicTop) {
       hemi.intensity =
