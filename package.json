@@ -17,6 +17,7 @@
   "dependencies": {
     "@fontsource-variable/fraunces": "^5.2.5",
     "@fontsource-variable/inter": "^5.2.5",
+    "@fontsource/ibm-plex-mono": "^5.2.7",
     "@spotify/basic-pitch": "^1.0.1",
     "@tonejs/midi": "^2.0.28",
     "mp4-muxer": "^5.2.1",

@@ -1,3 +1,4 @@
+import { renderScoreToPcm, type PcmResult } from '../core/audio/synth';
 import { buildChoreoProgram, type ChoreoProgram } from '../core/choreo/program';
 import { detectPhrases } from '../core/choreo/phrases';
 import { planShots, type ShotPlan } from '../core/cinema/planner';
@@ -91,4 +92,111 @@ export function buildPerformance(
     choreo: buildChoreoProgram(score),
     shots: planShots(score, { seed: hashName(imported.name) }),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Async orchestration for the UI (staged progress, audio decode/transcribe)
+// ---------------------------------------------------------------------------
+
+export type PipelineInput =
+  | { kind: 'midi'; data: ArrayBuffer; name: string }
+  | { kind: 'audio'; data: ArrayBuffer; name: string };
+
+export interface PipelineResult {
+  imported: import('../core/types').ImportedScore;
+  perf: Performance;
+  audio: { kind: 'file' | 'synth'; pcm: PcmResult };
+}
+
+export interface StageReporter {
+  start(label: string): void;
+  progress(pct: number): void;
+  done(detail?: string): void;
+}
+
+const paint = () => new Promise((r) => setTimeout(r, 16));
+
+export async function runPipeline(
+  input: PipelineInput,
+  report: StageReporter,
+): Promise<PipelineResult> {
+  const { importMidi } = await import('../core/midi/importer');
+
+  let imported: import('../core/types').ImportedScore;
+  let filePcm: PcmResult | null = null;
+
+  if (input.kind === 'midi') {
+    report.start('Reading score');
+    await paint();
+    imported = importMidi(input.data, input.name);
+    report.done(`${imported.notes.length} notes`);
+  } else {
+    report.start('Decoding audio');
+    await paint();
+    const ctx = new AudioContext({ sampleRate: 48000 });
+    const decoded = await ctx.decodeAudioData(input.data.slice(0));
+    await ctx.close();
+    filePcm = audioBufferToPcm(decoded);
+    report.done(`${decoded.duration.toFixed(1)}s`);
+
+    report.start('Transcribing notes');
+    const { transcribeAudio } = await import('../core/transcribe/basicPitch');
+    imported = await transcribeAudio(decoded, (pct) => report.progress(pct), input.name);
+    if (imported.notes.length === 0) throw new Error('No piano notes detected in this recording.');
+    report.done(`${imported.notes.length} notes`);
+  }
+
+  report.start('Separating hands');
+  await paint();
+  report.done();
+  report.start('Assigning fingering');
+  await paint();
+  report.done();
+  report.start('Choreographing performance');
+  await paint();
+  const perf = buildPerformance(imported);
+  report.done(`${perf.score.phrases.length} phrases`);
+
+  report.start('Planning cinematography');
+  await paint();
+  report.done(`${perf.shots.shots.length} shots`);
+
+  let audio: PipelineResult['audio'];
+  if (filePcm) {
+    audio = { kind: 'file', pcm: filePcm };
+  } else {
+    report.start('Voicing the piano');
+    await paint();
+    const pcm = renderScoreToPcm(
+      { notes: perf.score.notes, pedal: perf.score.pedal, duration: perf.score.duration },
+      48000,
+    );
+    audio = { kind: 'synth', pcm };
+    report.done(`${pcm.duration.toFixed(1)}s`);
+  }
+
+  return { imported, perf, audio };
+}
+
+/** Re-run the AI with user pins; synth audio re-voiced (disabled notes go silent). */
+export function regenerate(
+  imported: import('../core/types').ImportedScore,
+  edits: NoteEdit[],
+  audioKind: 'file' | 'synth',
+): { perf: Performance; pcm?: PcmResult } {
+  const perf = buildPerformance(imported, edits);
+  if (audioKind === 'synth') {
+    const pcm = renderScoreToPcm(
+      { notes: perf.score.notes, pedal: perf.score.pedal, duration: perf.score.duration },
+      48000,
+    );
+    return { perf, pcm };
+  }
+  return { perf };
+}
+
+export function audioBufferToPcm(buf: AudioBuffer): PcmResult {
+  const l = buf.getChannelData(0);
+  const r = buf.numberOfChannels > 1 ? buf.getChannelData(1) : l;
+  return { l: new Float32Array(l), r: new Float32Array(r), sampleRate: buf.sampleRate, duration: buf.duration };
 }
