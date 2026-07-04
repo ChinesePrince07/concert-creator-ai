@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
+import { LoopSubdivision } from 'three-subdivide';
 import type { Hand } from '../core/types';
 
 /**
@@ -117,6 +118,17 @@ export function createXRHandRig(source: THREE.Group, hand: Hand): XRHandRig {
       const m = o as THREE.SkinnedMesh;
       m.frustumCulled = false;
       m.castShadow = true;
+      try {
+        // VR hand meshes are authored low-poly — one Loop pass doubles the
+        // silhouette smoothness (skinning attributes are interpolated too)
+        m.geometry = LoopSubdivision.modify(m.geometry, 1, {
+          split: false,
+          preserveEdges: false,
+          flatOnly: false,
+        });
+      } catch (e) {
+        console.warn('[xr-hands] subdivision skipped', e);
+      }
       const old = m.material as THREE.MeshStandardMaterial;
       meshMat = new THREE.MeshPhysicalMaterial({
         map: old.map ?? null,

@@ -396,7 +396,7 @@ export function createPianist(characterId: CharacterId = 'nocturne'): PianistRig
     const clav = new THREE.Group();
     clav.position.set(side * 0.168, 0.125, -0.005);
     chest.add(clav);
-    const shoulderBall = joint(0.054 * bulk, body);
+    const shoulderBall = joint(0.049 * bulk, body);
     clav.add(shoulderBall);
 
     const shoulder = new THREE.Group();
@@ -406,7 +406,7 @@ export function createPianist(characterId: CharacterId = 'nocturne'): PianistRig
     const elbow = new THREE.Group();
     group.add(elbow); // world-space driven
     elbow.add(capsule(0.038 * bulk, FOREARM, body));
-    const elbowBall = joint(0.045 * bulk, body);
+    const elbowBall = joint(0.0385 * bulk, body);
     elbow.add(elbowBall);
 
     // cuff

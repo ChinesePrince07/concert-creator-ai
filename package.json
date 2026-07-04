@@ -23,6 +23,7 @@
     "@webxr-input-profiles/assets": "^1.0.20",
     "mp4-muxer": "^5.2.1",
     "three": "^0.182.0",
+    "three-subdivide": "^1.1.5",
     "webm-muxer": "^5.0.3"
   },
   "devDependencies": {

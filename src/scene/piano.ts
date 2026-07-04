@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 
 /**
  * Procedural concert grand: rim slab with the classic plan curve, propped
@@ -129,11 +130,12 @@ export function createPiano(modelId: PianoModelId = 'steinway'): PianoRig {
       bevelEnabled: true,
       bevelSize: 0.01,
       bevelThickness: 0.008,
-      bevelSegments: 2,
-      curveSegments: 48,
+      bevelSegments: 5,
+      curveSegments: 96,
     }),
     black,
   );
+  body.geometry = toCreasedNormals(body.geometry, Math.PI / 5) as unknown as THREE.ExtrudeGeometry;
   orientPlan(body.geometry, CASE_FRONT_Z, CASE_BASE_Y);
   body.castShadow = body.receiveShadow = true;
   group.add(body);
@@ -143,6 +145,7 @@ export function createPiano(modelId: PianoModelId = 'steinway'): PianoRig {
     new THREE.ExtrudeGeometry(rim(0.99), { depth: 0.015, curveSegments: 40 }),
     black,
   );
+  bottom.geometry = toCreasedNormals(bottom.geometry, Math.PI / 5) as unknown as THREE.ExtrudeGeometry;
   orientPlan(bottom.geometry, CASE_FRONT_Z - 0.002, CASE_BASE_Y);
   group.add(bottom);
 
@@ -234,6 +237,7 @@ export function createPiano(modelId: PianoModelId = 'steinway'): PianoRig {
     new THREE.ExtrudeGeometry(rim(1, 0.3), { depth: 0.022, bevelEnabled: true, bevelSize: 0.008, bevelThickness: 0.006, bevelSegments: 2, curveSegments: 48 }),
     lidMat,
   );
+  lid.geometry = toCreasedNormals(lid.geometry, Math.PI / 5) as unknown as THREE.ExtrudeGeometry;
   orientPlan(lid.geometry, CASE_FRONT_Z, 0);
   lid.geometry.translate(0.66 * W, 0, 0); // hinge line to origin
   lid.castShadow = true;
