@@ -9,6 +9,8 @@ import * as THREE from 'three';
 export interface PianoRig {
   group: THREE.Group;
   setPedal(v: number): void;
+  /** hide the open lid + desk for unobstructed top-down (Synthesia) views */
+  setLidVisible(v: boolean): void;
 }
 
 const BLACK = () =>
@@ -261,6 +263,11 @@ export function createPiano(): PianoRig {
     group,
     setPedal(v: number) {
       sustainPivot.rotation.x = -v * 0.22;
+    },
+    setLidVisible(v: boolean) {
+      lidGroup.visible = v;
+      prop.visible = v;
+      desk.visible = v;
     },
   };
 }

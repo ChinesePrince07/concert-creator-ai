@@ -18,6 +18,8 @@ export interface RollLayer {
   setScore(score: PerformanceScore | null): void;
   setColors(left: THREE.Color, right: THREE.Color): void;
   setZoom(z: number): void;
+  /** tilt of the tile plane about the strike line: 0 = flat over the piano, ~1.0 = Synthesia ramp */
+  setPitch(rad: number): void;
   update(t: number, keys: Float32Array): void;
   setVisible(v: boolean): void;
 }
@@ -32,19 +34,11 @@ export function createRoll(): RollLayer {
   const colorR = new THREE.Color(0xffb84f);
   let zoom = 1;
 
-  // backdrop
-  const backdrop = new THREE.Mesh(
-    new THREE.PlaneGeometry(4.2, 3.4),
-    new THREE.MeshBasicMaterial({ color: 0x05060a }),
-  );
-  backdrop.rotation.x = -Math.PI / 2;
-  backdrop.position.set(0, KEY_TOP_Y - 0.02, -1.72);
-  group.add(backdrop);
-
   // note quads with rounded-corner SDF alpha
   const noteMat = new THREE.ShaderMaterial({
     transparent: true,
     depthWrite: false,
+    depthTest: false, // UI overlay: tiles read over the piano body and lid
     uniforms: {},
     vertexShader: /* glsl */ `
       varying vec2 vUv;
@@ -97,7 +91,9 @@ export function createRoll(): RollLayer {
   noteGeo.setAttribute('iRect', iRect);
   noteGeo.setAttribute('iGlow', iGlow);
   const noteMesh = new THREE.Mesh(noteGeo, noteMat);
-  noteMesh.position.y = KEY_TOP_Y + 0.013;
+  // pivot at the strike line; pitch rotates the tile plane up from the piano
+  noteMesh.position.set(0, KEY_TOP_Y + 0.013, KEY_REAR_Z);
+  noteMesh.renderOrder = 990;
   noteMesh.frustumCulled = false;
   group.add(noteMesh);
 
@@ -135,16 +131,17 @@ export function createRoll(): RollLayer {
       const remainStart = Math.max(0, n.start - t);
       const remainEnd = Math.max(0, n.end - t);
       if (remainEnd <= 0) continue;
-      const zBottom = KEY_REAR_Z - remainStart * speed;
-      const zTop = KEY_REAR_Z - remainEnd * speed;
-      const len = Math.max(0.02, zBottom - zTop);
+      // distances ahead of the strike line, in local plane space
+      const vBottom = remainStart * speed;
+      const vTop = remainEnd * speed;
+      const len = Math.max(0.02, vTop - vBottom);
       const black = isBlack(n.midi);
       const w = black ? 0.0125 : 0.019;
       const x = (keyCenterX(n.midi) - 611) / 1000;
       const sounding = t >= n.start && t <= n.end;
       tmp.copy(n.hand === 'L' ? colorL : colorR);
       iColor.setXYZ(count, tmp.r, tmp.g, tmp.b);
-      iRect.setXYZW(count, x, zBottom, w, len);
+      iRect.setXYZW(count, x, -vBottom, w, len);
       iGlow.setX(count, sounding ? 1 : 0.15);
       count++;
     }
@@ -189,6 +186,9 @@ export function createRoll(): RollLayer {
     },
     setZoom(z) {
       zoom = THREE.MathUtils.clamp(z, 0.5, 2);
+    },
+    setPitch(rad) {
+      noteMesh.rotation.x = rad;
     },
     update,
     setVisible(v) {

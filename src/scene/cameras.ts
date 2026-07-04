@@ -141,17 +141,18 @@ export function evaluateCamera(
       evaluateShot({ type: 'CLOSE_HANDS', start: 0, end: 3600, seed: 12 }, t, ctx, state);
       break;
     case 'TOP': {
-      // roll mode: high view, keys low in frame, roll filling the screen
-      state.pos.set(0, 2.45, 0.62);
-      state.target.set(0, 0.72, -0.28);
-      state.fov = 34;
+      // Synthesia view: hands on keys at the bottom, tiles falling from above
+      state.pos.set(0, 2.5, 0.56);
+      state.target.set(0, 0.72, -0.34);
+      state.fov = 35;
       state.focus = state.pos.distanceTo(state.target);
       break;
     }
     case 'FP': {
-      state.pos.set(0, 1.55, 1.02);
-      state.target.set(ax * 0.4, 0.75, -0.35);
-      state.fov = 52;
+      // through the pianist's own eyes
+      state.pos.set(0.01, 1.53, 0.5);
+      state.target.set(ax * 0.35, 0.8, -0.28);
+      state.fov = 58;
       state.focus = state.pos.distanceTo(state.target);
       break;
     }

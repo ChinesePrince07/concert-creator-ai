@@ -15,6 +15,8 @@ export interface PianistRig {
   group: THREE.Group;
   apply(frame: PoseFrame): void;
   setVisible(v: boolean): void;
+  /** hide head + neck for first-person view */
+  setHeadVisible(v: boolean): void;
 }
 
 const BODY_MAT = () =>
@@ -423,6 +425,9 @@ export function createPianist(): PianistRig {
     apply,
     setVisible(v: boolean) {
       group.visible = v;
+    },
+    setHeadVisible(v: boolean) {
+      neck.visible = v;
     },
   };
 }

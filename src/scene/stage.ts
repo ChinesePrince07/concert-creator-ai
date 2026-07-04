@@ -270,18 +270,19 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
   function applyModeVisibility(): void {
     const rollOn = isRollMode();
     roll.setVisible(rollOn);
-    piano.group.visible = !rollOn;
-    pianist.group.visible = !rollOn && visuals.showAvatar;
-    floorGroup.visible = !rollOn;
+    // Synthesia modes keep the live scene — hands stay in frame under the tiles
+    pianist.group.visible = visuals.showAvatar;
+    pianist.setHeadVisible(!(rollOn && mode === 'FP'));
+    piano.setLidVisible(!rollOn);
+    roll.setPitch(mode === 'FP' ? 0.95 : 0.16);
     dust.visible = !rollOn;
-    // flat, even light for the roll UI; theatrical rig for 3D scenes
-    key.visible = !rollOn;
-    rim.visible = !rollOn;
-    keysAccent.visible = !rollOn;
-    bounce.visible = !rollOn;
-    hemi.intensity = rollOn ? 1.5 : visuals.lightMood === 'warm' ? 0.55 : visuals.lightMood === 'blue' ? 0.38 : 0.45;
-    if (rollOn) hemi.color.set(0xbfc4d4);
-    else hemi.color.set(0x24242e);
+    // extra readable fill over the keys in roll modes; theatrical rig stays on
+    hemi.intensity =
+      (rollOn ? 0.4 : 0) +
+      (visuals.lightMood === 'warm' ? 0.55 : visuals.lightMood === 'blue' ? 0.38 : 0.45);
+    // the interior is the tile canvas in TOP view — keep the spot off it
+    const moodKey = visuals.lightMood === 'warm' ? 140 : visuals.lightMood === 'blue' ? 90 : 85;
+    key.intensity = rollOn && mode === 'TOP' ? moodKey * 0.4 : moodKey;
   }
 
   function applyMood(): void {
