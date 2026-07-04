@@ -336,6 +336,7 @@ export function studioScreen(initial: AppState): {
     zoom.oninput = () => setVisuals({ rollZoom: Number(zoom.value) });
 
     const SHORT: Record<string, string> = {
+      scanned: 'YOUR GLB ★',
       steinway: 'STEINWAY & SONS',
       yamaha: 'YAMAHA CFX',
       bosendorfer: 'BÖSENDORFER',

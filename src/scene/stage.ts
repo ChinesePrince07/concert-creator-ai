@@ -13,6 +13,7 @@ const UP_DEFAULT = new THREE.Vector3(0, 1, 0);
 import { createPiano, type PianoModelId } from './piano';
 import { type CharacterId } from './pianist';
 import { loadXRHandScenes } from './xrHands';
+import { loadCustomPiano } from './customPiano';
 
 export { PIANO_MODELS, type PianoModelId } from './piano';
 export { CHARACTERS, type CharacterId } from './pianist';
@@ -293,6 +294,20 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
   let piano = createPiano(DEFAULT_VISUALS.pianoModel);
   let pianoModel: PianoModelId = DEFAULT_VISUALS.pianoModel;
   scene.add(piano.group);
+  let customPiano: THREE.Group | null = null;
+  const applyPianoChoice = () => {
+    const wantScanned = pianoModel === 'scanned' && customPiano !== null;
+    if (customPiano) customPiano.visible = wantScanned;
+    piano.group.visible = !wantScanned;
+  };
+  void loadCustomPiano().then((g) => {
+    if (g) {
+      customPiano = g;
+      g.visible = false;
+      scene.add(g);
+      applyPianoChoice();
+    }
+  });
   let pianist = createPianist(DEFAULT_VISUALS.character);
   let character: CharacterId = DEFAULT_VISUALS.character;
   scene.add(pianist.group);
@@ -348,7 +363,8 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
     pianist.setHeadVisible(!rollOn); // head out of frame in both Synthesia views
     pianist.setHandsOnly(classicTop); // reference framing: hands + forearms only
     piano.setLidVisible(!rollOn);
-    piano.group.visible = !classicTop;
+    piano.group.visible = !classicTop && !(pianoModel === 'scanned' && customPiano);
+    if (customPiano) customPiano.visible = !classicTop && pianoModel === 'scanned';
     roll.setRailVisible(classicTop);
     floorGroup.visible = !classicTop;
     roll.setPitch(mode === 'FP' ? 0.95 : Math.PI / 2);
@@ -533,6 +549,7 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
         scene.add(piano.group);
         pianoModel = visuals.pianoModel;
       }
+      applyPianoChoice();
       if (visuals.character !== character) {
         scene.remove(pianist.group);
         pianist.dispose();

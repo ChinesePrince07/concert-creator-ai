@@ -7,7 +7,7 @@ import { toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
  * and a bench. World meters; keyboard front edge at z≈0.16, body into -z.
  */
 
-export type PianoModelId = 'steinway' | 'yamaha' | 'bosendorfer' | 'kawai' | 'fazioli';
+export type PianoModelId = 'steinway' | 'yamaha' | 'bosendorfer' | 'kawai' | 'fazioli' | 'scanned';
 
 export interface PianoModelSpec {
   id: PianoModelId;
@@ -29,6 +29,12 @@ export interface PianoModelSpec {
 }
 
 export const PIANO_MODELS: PianoModelSpec[] = [
+  {
+    id: 'scanned', name: 'Your Steinway (GLB)', blurb: 'Photoreal model you supplied — app keys overlaid',
+    lengthScale: 1.0, widthScale: 1.0, finishColor: 0x060607, finishRoughness: 0.07,
+    plateColor: 0x574320, plateMetalness: 0.7, feltColor: 0x8c1626, soundboardColor: 0x120b05,
+    hardwareColor: 0xb08d3f, hardwareMetalness: 1.0, hardwareRoughness: 0.32, stringColor: 0xd8d3c4, extraBassKeys: 0,
+  },
   {
     id: 'steinway', name: 'Steinway & Sons D-274', blurb: 'Black polish, gold plate, red felt',
     lengthScale: 1.0, widthScale: 1.0, finishColor: 0x060607, finishRoughness: 0.07,
