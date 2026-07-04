@@ -7,7 +7,9 @@ import { KEY_COUNT, MIDI_MIN, keyIndex } from '../core/keyboard';
 import type { Hand, PerformanceScore } from '../core/types';
 import { type CameraMode, type CameraState, evaluateCamera } from './cameras';
 import { createKeyboard } from './keys';
-import { createPiano } from './piano';
+import { createPiano, type PianoModelId } from './piano';
+
+export { PIANO_MODELS, type PianoModelId } from './piano';
 import { createPianist } from './pianist';
 import { type PostChain, createPost } from './post';
 import { createRoll } from './roll';
@@ -21,6 +23,7 @@ export interface VisualSettings {
   showAvatar: boolean;
   lightMood: 'noir' | 'warm' | 'blue';
   rollZoom: number;
+  pianoModel: PianoModelId;
 }
 
 export const DEFAULT_VISUALS: VisualSettings = {
@@ -30,6 +33,7 @@ export const DEFAULT_VISUALS: VisualSettings = {
   showAvatar: true,
   lightMood: 'noir',
   rollZoom: 1,
+  pianoModel: 'steinway',
 };
 
 export interface ConcertScene {
@@ -232,7 +236,8 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
   // ---- performers -----------------------------------------------------------
   const keyboard = createKeyboard();
   scene.add(keyboard.group);
-  const piano = createPiano();
+  let piano = createPiano(DEFAULT_VISUALS.pianoModel);
+  let pianoModel: PianoModelId = DEFAULT_VISUALS.pianoModel;
   scene.add(piano.group);
   const pianist = createPianist();
   scene.add(pianist.group);
@@ -405,6 +410,13 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
       roll.setColors(colorL, colorR);
       roll.setZoom(visuals.rollZoom);
       keyboard.setHighlightEnabled(true);
+      if (visuals.pianoModel !== pianoModel) {
+        scene.remove(piano.group);
+        piano.dispose();
+        piano = createPiano(visuals.pianoModel);
+        scene.add(piano.group);
+        pianoModel = visuals.pianoModel;
+      }
       applyMood();
       applyModeVisibility();
     },

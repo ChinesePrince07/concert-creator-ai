@@ -1,7 +1,7 @@
 import { MIDI_MIN } from '../../core/keyboard';
 import type { PerformanceNote } from '../../core/types';
 import type { CameraMode } from '../../scene/cameras';
-import { createConcertScene, type ConcertScene } from '../../scene/stage';
+import { createConcertScene, PIANO_MODELS, type ConcertScene } from '../../scene/stage';
 import { applyEdit, backToLibrary } from '../../state/actions';
 import { store, type AppState, type ProjectState } from '../../state/store';
 import { PlaybackEngine } from '../audio';
@@ -306,8 +306,31 @@ export function studioScreen(initial: AppState): {
     const zoom = el('input', { type: 'range', min: '0.5', max: '2', step: '0.05', value: String(v.rollZoom) }) as HTMLInputElement;
     zoom.oninput = () => setVisuals({ rollZoom: Number(zoom.value) });
 
+    const SHORT: Record<string, string> = {
+      steinway: 'STEINWAY & SONS',
+      yamaha: 'YAMAHA CFX',
+      bosendorfer: 'BÖSENDORFER',
+      kawai: 'SHIGERU KAWAI',
+      fazioli: 'FAZIOLI',
+    };
+    const pianoSeg = el('div', { class: 'seg wrap' });
+    for (const m of PIANO_MODELS) {
+      const b = el('button', {
+        text: SHORT[m.id],
+        title: `${m.name} — ${m.blurb}`,
+        class: v.pianoModel === m.id ? 'on' : '',
+      });
+      b.onclick = () => {
+        setVisuals({ pianoModel: m.id });
+        pianoSeg.querySelectorAll('button').forEach((x) => x.classList.remove('on'));
+        b.classList.add('on');
+      };
+      pianoSeg.append(b);
+    }
+
     return el('div', { class: 'panel' }, [
       el('h3', { text: 'Visuals' }),
+      el('div', { class: 'group' }, [el('label', { text: 'Piano' }), pianoSeg]),
       el('div', { class: 'group' }, [el('label', { text: 'Lighting' }), moodSeg]),
       el('div', { class: 'group' }, [el('label', { text: 'Hand colours — L / R' }), swatches]),
       el('div', { class: 'group' }, [

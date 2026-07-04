@@ -6,30 +6,75 @@ import * as THREE from 'three';
  * and a bench. World meters; keyboard front edge at z≈0.16, body into -z.
  */
 
+export type PianoModelId = 'steinway' | 'yamaha' | 'bosendorfer' | 'kawai' | 'fazioli';
+
+export interface PianoModelSpec {
+  id: PianoModelId;
+  name: string;
+  blurb: string;
+  lengthScale: number;
+  widthScale: number;
+  finishColor: number;
+  finishRoughness: number;
+  plateColor: number;
+  plateMetalness: number;
+  feltColor: number;
+  soundboardColor: number;
+  hardwareColor: number;
+  hardwareMetalness: number;
+  hardwareRoughness: number;
+  stringColor: number;
+  extraBassKeys: number;
+}
+
+export const PIANO_MODELS: PianoModelSpec[] = [
+  {
+    id: 'steinway', name: 'Steinway & Sons D-274', blurb: 'Black polish, gold plate, red felt',
+    lengthScale: 1.0, widthScale: 1.0, finishColor: 0x060607, finishRoughness: 0.16,
+    plateColor: 0x574320, plateMetalness: 0.7, feltColor: 0x8c1626, soundboardColor: 0x120b05,
+    hardwareColor: 0xb08d3f, hardwareMetalness: 1.0, hardwareRoughness: 0.32, stringColor: 0xd8d3c4, extraBassKeys: 0,
+  },
+  {
+    id: 'yamaha', name: 'Yamaha CFX', blurb: 'Cleaner gloss, pale plate, green felt',
+    lengthScale: 0.98, widthScale: 1.0, finishColor: 0x050506, finishRoughness: 0.12,
+    plateColor: 0x6b5a2e, plateMetalness: 0.6, feltColor: 0x1f5c40, soundboardColor: 0x1a1008,
+    hardwareColor: 0x9aa0a8, hardwareMetalness: 1.0, hardwareRoughness: 0.28, stringColor: 0xe2ddd0, extraBassKeys: 0,
+  },
+  {
+    id: 'bosendorfer', name: 'Bösendorfer Imperial', blurb: 'Extra black bass keys, satin Viennese case',
+    lengthScale: 1.1, widthScale: 1.08, finishColor: 0x0a0a0c, finishRoughness: 0.3,
+    plateColor: 0x4a3a1c, plateMetalness: 0.65, feltColor: 0x701320, soundboardColor: 0x1c1209,
+    hardwareColor: 0xa8843c, hardwareMetalness: 1.0, hardwareRoughness: 0.4, stringColor: 0xd0cbbd, extraBassKeys: 4,
+  },
+  {
+    id: 'kawai', name: 'Shigeru Kawai SK-EX', blurb: 'Copper plate, signature blue accents',
+    lengthScale: 1.02, widthScale: 1.0, finishColor: 0x070708, finishRoughness: 0.18,
+    plateColor: 0x5a3d22, plateMetalness: 0.8, feltColor: 0x1e3a6e, soundboardColor: 0x160d06,
+    hardwareColor: 0xb08d3f, hardwareMetalness: 1.0, hardwareRoughness: 0.32, stringColor: 0xd8d3c4, extraBassKeys: 0,
+  },
+  {
+    id: 'fazioli', name: 'Fazioli F308', blurb: 'The longest grand — mirror gloss, chrome hardware',
+    lengthScale: 1.16, widthScale: 1.0, finishColor: 0x08080a, finishRoughness: 0.09,
+    plateColor: 0x7d6a35, plateMetalness: 0.75, feltColor: 0x9c1c2c, soundboardColor: 0x241206,
+    hardwareColor: 0xc8ccd2, hardwareMetalness: 1.0, hardwareRoughness: 0.14, stringColor: 0xe6e2d6, extraBassKeys: 0,
+  },
+];
+
 export interface PianoRig {
   group: THREE.Group;
   setPedal(v: number): void;
   /** hide the open lid + desk for unobstructed top-down (Synthesia) views */
   setLidVisible(v: boolean): void;
+  dispose(): void;
 }
 
-const BLACK = () =>
-  new THREE.MeshPhysicalMaterial({
-    color: 0x060607,
-    roughness: 0.16,
-    clearcoat: 1.0,
-    clearcoatRoughness: 0.08,
-  });
-const GOLD = () =>
-  new THREE.MeshStandardMaterial({ color: 0xb08d3f, metalness: 1.0, roughness: 0.32 });
+const LEN = 1.32; // baseline depth stretch → ~2.2m concert length
 
-const LEN = 1.32; // depth stretch → ~2.2m concert length
-
-function rimShape(scale = 1, frontCut = 0): THREE.Shape {
+function rimShape(scale: number, frontCut: number, len: number, width: number): THREE.Shape {
   // plan coords: (x, d) with d = distance back from the case front
   const s = new THREE.Shape();
-  const k = scale;
-  const d = scale * LEN;
+  const k = scale * width;
+  const d = scale * len;
   const f = frontCut;
   s.moveTo(-0.66 * k, f);
   s.lineTo(0.66 * k, f);
@@ -48,19 +93,32 @@ function orientPlan(geo: THREE.BufferGeometry, frontZ: number, yBottom: number):
   geo.translate(0, yBottom, frontZ);
 }
 
-export function createPiano(): PianoRig {
+export function createPiano(modelId: PianoModelId = 'steinway'): PianoRig {
+  const cfg = PIANO_MODELS.find((m) => m.id === modelId) ?? PIANO_MODELS[0];
   const group = new THREE.Group();
-  const black = BLACK();
-  const gold = GOLD();
+  const black = new THREE.MeshPhysicalMaterial({
+    color: cfg.finishColor,
+    roughness: cfg.finishRoughness,
+    clearcoat: 1.0,
+    clearcoatRoughness: Math.max(0.05, cfg.finishRoughness * 0.5),
+  });
+  const gold = new THREE.MeshStandardMaterial({
+    color: cfg.hardwareColor,
+    metalness: cfg.hardwareMetalness,
+    roughness: cfg.hardwareRoughness,
+  });
+  const bodyLen = LEN * cfg.lengthScale;
+  const W = cfg.widthScale;
+  const rim = (scale: number, frontCut = 0) => rimShape(scale, frontCut, bodyLen, W);
 
   const CASE_FRONT_Z = -0.02;
   const CASE_BASE_Y = 0.58;
   const CASE_H = 0.3;
 
   // rim: outer curve with inner hole → open case showing the interior
-  const rimWithHole = rimShape();
+  const rimWithHole = rim(1);
   {
-    const inner = rimShape(0.945);
+    const inner = rim(0.945);
     const hole = new THREE.Path();
     hole.curves = inner.curves;
     rimWithHole.holes.push(hole);
@@ -82,7 +140,7 @@ export function createPiano(): PianoRig {
 
   // case floor (bottom of the body)
   const bottom = new THREE.Mesh(
-    new THREE.ExtrudeGeometry(rimShape(0.99), { depth: 0.015, curveSegments: 40 }),
+    new THREE.ExtrudeGeometry(rim(0.99), { depth: 0.015, curveSegments: 40 }),
     black,
   );
   orientPlan(bottom.geometry, CASE_FRONT_Z - 0.002, CASE_BASE_Y);
@@ -90,38 +148,38 @@ export function createPiano(): PianoRig {
 
   // soundboard (dark wood, visible under the open lid)
   const sound = new THREE.Mesh(
-    new THREE.ExtrudeGeometry(rimShape(0.94), { depth: 0.006, curveSegments: 40 }),
-    new THREE.MeshStandardMaterial({ color: 0x120b05, roughness: 0.85, metalness: 0.02 }),
+    new THREE.ExtrudeGeometry(rim(0.94), { depth: 0.006, curveSegments: 40 }),
+    new THREE.MeshStandardMaterial({ color: cfg.soundboardColor, roughness: 0.85, metalness: 0.02 }),
   );
   orientPlan(sound.geometry, CASE_FRONT_Z - 0.012, CASE_BASE_Y + 0.19);
   group.add(sound);
 
   // cast-iron plate, muted old gold
   const frame = new THREE.Mesh(
-    new THREE.ExtrudeGeometry(rimShape(0.87), { depth: 0.004, curveSegments: 40 }),
-    new THREE.MeshStandardMaterial({ color: 0x2e2410, metalness: 0.5, roughness: 0.68 }),
+    new THREE.ExtrudeGeometry(rim(0.87), { depth: 0.004, curveSegments: 40 }),
+    new THREE.MeshStandardMaterial({ color: cfg.plateColor, metalness: cfg.plateMetalness, roughness: 0.62 }),
   );
   orientPlan(frame.geometry, CASE_FRONT_Z - 0.06, CASE_BASE_Y + 0.212);
   group.add(frame);
 
   // damper/pin-block cover: dark panel over the front interior
   const cover = new THREE.Mesh(
-    new THREE.BoxGeometry(1.23, 0.014, 0.42),
+    new THREE.BoxGeometry(1.23 * W, 0.014, 0.42),
     new THREE.MeshPhysicalMaterial({ color: 0x0a0a0b, roughness: 0.4, clearcoat: 0.5 }),
   );
   cover.position.set(0, CASE_BASE_Y + CASE_H - 0.045, CASE_FRONT_Z - 0.24);
   group.add(cover);
 
   // strings hint: thin bright lines fanning toward the tail
-  const stringMat = new THREE.MeshStandardMaterial({ color: 0xd8d3c4, metalness: 0.95, roughness: 0.3 });
+  const stringMat = new THREE.MeshStandardMaterial({ color: cfg.stringColor, metalness: 0.95, roughness: 0.3 });
   const stringGeo = new THREE.BoxGeometry(0.0012, 0.002, 1);
   const strings = new THREE.InstancedMesh(stringGeo, stringMat, 48);
   const sm = new THREE.Matrix4();
   const sq = new THREE.Quaternion();
   for (let i = 0; i < 48; i++) {
     const f = i / 47;
-    const x = THREE.MathUtils.lerp(-0.5, 0.53, f);
-    const len = THREE.MathUtils.lerp(1.3 * LEN, 0.32 * LEN, Math.pow(f, 1.35));
+    const x = THREE.MathUtils.lerp(-0.5 * W, 0.53 * W, f);
+    const len = THREE.MathUtils.lerp(1.3 * bodyLen, 0.32 * bodyLen, Math.pow(f, 1.35));
     const zMid = CASE_FRONT_Z - 0.14 - len / 2;
     sq.identity();
     sm.compose(new THREE.Vector3(x, CASE_BASE_Y + 0.225, zMid), sq, new THREE.Vector3(1, 1, len));
@@ -133,34 +191,38 @@ export function createPiano(): PianoRig {
   const lidGroup = new THREE.Group();
   // main lid with the front flap folded back (front 30cm open, doubled strip)
   const lidMat = new THREE.MeshPhysicalMaterial({
-    color: 0x070708,
-    roughness: 0.34,
+    color: cfg.finishColor,
+    roughness: cfg.finishRoughness + 0.18,
     clearcoat: 0.75,
     clearcoatRoughness: 0.28,
   });
   const lid = new THREE.Mesh(
-    new THREE.ExtrudeGeometry(rimShape(1, 0.3), { depth: 0.022, bevelEnabled: true, bevelSize: 0.008, bevelThickness: 0.006, bevelSegments: 2, curveSegments: 48 }),
+    new THREE.ExtrudeGeometry(rim(1, 0.3), { depth: 0.022, bevelEnabled: true, bevelSize: 0.008, bevelThickness: 0.006, bevelSegments: 2, curveSegments: 48 }),
     lidMat,
   );
   orientPlan(lid.geometry, CASE_FRONT_Z, 0);
-  lid.geometry.translate(0.66, 0, 0); // hinge line to origin
+  lid.geometry.translate(0.66 * W, 0, 0); // hinge line to origin
   lid.castShadow = true;
-  const flap = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.02, 0.28), lidMat);
-  flap.position.set(0.66, 0.032, CASE_FRONT_Z - 0.45);
+  const flap = new THREE.Mesh(new THREE.BoxGeometry(1.3 * W, 0.02, 0.28), lidMat);
+  flap.position.set(0.66 * W, 0.032, CASE_FRONT_Z - 0.45);
   lidGroup.add(flap);
-  lidGroup.position.set(-0.66, CASE_BASE_Y + CASE_H + 0.012, 0);
+  lidGroup.position.set(-0.66 * W, CASE_BASE_Y + CASE_H + 0.012, 0);
   lidGroup.rotation.z = THREE.MathUtils.degToRad(42);
   lidGroup.add(lid);
   group.add(lidGroup);
 
   // lid prop
-  const prop = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.72), black.clone());
-  prop.position.set(0.5, 1.24, -0.95);
+  const prop = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.011, 0.011, 0.72),
+    cfg.id === 'fazioli' ? gold : black.clone(),
+  );
+  prop.position.set(0.5, 1.24, -0.95 * cfg.lengthScale);
   prop.rotation.z = THREE.MathUtils.degToRad(-16);
   group.add(prop);
 
   // keybed + cheeks + fallboard + felt
-  const bed = new THREE.Mesh(new THREE.BoxGeometry(1.31, 0.045, 0.21), black);
+  const kbHalf = 0.611 + cfg.extraBassKeys * 0.0235;
+  const bed = new THREE.Mesh(new THREE.BoxGeometry(kbHalf * 2 + 0.09, 0.045, 0.21), black);
   bed.position.set(0, 0.7, 0.075);
   bed.castShadow = bed.receiveShadow = true;
   group.add(bed);
@@ -168,23 +230,35 @@ export function createPiano(): PianoRig {
   const cheekGeo = new THREE.BoxGeometry(0.042, 0.075, 0.2);
   for (const sx of [-1, 1]) {
     const cheek = new THREE.Mesh(cheekGeo, black);
-    cheek.position.set(sx * 0.634, 0.755, 0.06);
+    cheek.position.set(sx * (kbHalf + 0.023), 0.755, 0.06);
     cheek.castShadow = true;
     group.add(cheek);
   }
 
-  const fall = new THREE.Mesh(new THREE.BoxGeometry(1.225, 0.085, 0.03), black);
+  // Bösendorfer-style extra bass keys: black-capped naturals left of A0
+  if (cfg.extraBassKeys > 0) {
+    const extraMat = new THREE.MeshPhysicalMaterial({ color: 0x111114, roughness: 0.3, clearcoat: 0.6 });
+    const extraGeo = new THREE.BoxGeometry(0.0222, 0.021, 0.15);
+    for (let i = 0; i < cfg.extraBassKeys; i++) {
+      const k = new THREE.Mesh(extraGeo, extraMat);
+      k.position.set(-(0.611 + (i + 0.5) * 0.0235), 0.735 - 0.0105, 0.075);
+      k.castShadow = true;
+      group.add(k);
+    }
+  }
+
+  const fall = new THREE.Mesh(new THREE.BoxGeometry(kbHalf * 2 + 0.003, 0.085, 0.03), black);
   fall.position.set(0, 0.775, -0.012);
   fall.rotation.x = THREE.MathUtils.degToRad(-14);
   group.add(fall);
-  const goldStrip = new THREE.Mesh(new THREE.BoxGeometry(1.225, 0.006, 0.006), gold);
+  const goldStrip = new THREE.Mesh(new THREE.BoxGeometry(kbHalf * 2, 0.006, 0.006), gold);
   goldStrip.position.set(0, 0.812, -0.02);
   goldStrip.rotation.x = THREE.MathUtils.degToRad(-14);
   group.add(goldStrip);
 
   const felt = new THREE.Mesh(
-    new THREE.BoxGeometry(1.225, 0.004, 0.012),
-    new THREE.MeshStandardMaterial({ color: 0x8c1626, roughness: 1 }),
+    new THREE.BoxGeometry(kbHalf * 2, 0.004, 0.012),
+    new THREE.MeshStandardMaterial({ color: cfg.feltColor, roughness: 1 }),
   );
   felt.position.set(0, 0.738, -0.001);
   group.add(felt);
@@ -199,9 +273,9 @@ export function createPiano(): PianoRig {
   // legs + casters
   const legGeo = new THREE.CylinderGeometry(0.038, 0.055, 0.58, 14);
   const legs: Array<[number, number]> = [
-    [-0.56, 0.02],
-    [0.56, 0.02],
-    [-0.2, -1.78],
+    [-0.56 * W, 0.02],
+    [0.56 * W, 0.02],
+    [-0.2, -1.78 * cfg.lengthScale],
   ];
   for (const [lx, lz] of legs) {
     const leg = new THREE.Mesh(legGeo, black);
@@ -268,6 +342,15 @@ export function createPiano(): PianoRig {
       lidGroup.visible = v;
       prop.visible = v;
       desk.visible = v;
+    },
+    dispose() {
+      group.traverse((obj) => {
+        if (obj instanceof THREE.Mesh) {
+          obj.geometry.dispose();
+          const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+          for (const m of mats) m.dispose();
+        }
+      });
     },
   };
 }
