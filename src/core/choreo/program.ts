@@ -39,6 +39,8 @@ export interface HandPose {
   wrist: Vec3;
   /** index 0..4 = fingers 1..5 (thumb..pinky) */
   fingers: FingerPose[];
+  /** wrist roll toward the pressing finger: + = pinky side, − = thumb side */
+  roll: number;
 }
 
 export interface PoseFrame {
@@ -242,13 +244,65 @@ export function buildChoreoProgram(score: PerformanceScore): ChoreoProgram {
   }
 
   // ---- analytic finger/tip evaluation ------------------------------------
-  function fingerPose(hand: Hand, finger: Finger, t: number, wrist: Vec3): FingerPose {
-    const list = byHandFinger.get(`${hand}${finger}`);
-    const home: Vec3 = {
+  /**
+   * Where an unengaged finger hovers: real pianists shape the hand over the
+   * keys it is about to (or just did) play. Glide between the previous and
+   * next assignment of this finger; fall back to the static spread.
+   */
+  function fingerHome(hand: Hand, finger: Finger, t: number, wrist: Vec3): Vec3 {
+    const spread: Vec3 = {
       x: wrist.x + HOME_OFFSETS[hand][finger],
       y: wrist.y - 34,
       z: wrist.z - 118,
     };
+    const list = byHandFinger.get(`${hand}${finger}`);
+    if (!list || list.length === 0) return spread;
+
+    const idx = lowerBound(list, t); // first with start >= t
+    const next = list[idx];
+    let prev: PerformanceNote | null = null;
+    for (let i = idx - 1; i >= 0; i--) {
+      if (list[i].end <= t) {
+        prev = list[i];
+        break;
+      }
+      if (list[i].start <= t) return hoverOver(list[i], wrist); // engaged handled upstream
+    }
+
+    const PREP = 1.6; // seconds of anticipation
+    const RELAX = 2.0; // seconds before drifting back to the spread
+
+    if (prev && next) {
+      const gap = Math.max(0.05, next.start - prev.end);
+      const s = smoothstep((t - prev.end) / gap);
+      const a = hoverOver(prev, wrist);
+      const b = hoverOver(next, wrist);
+      return { x: lerp(a.x, b.x, s), y: lerp(a.y, b.y, s), z: lerp(a.z, b.z, s) };
+    }
+    if (next) {
+      const s = smoothstep((t - (next.start - PREP)) / PREP);
+      const b = hoverOver(next, wrist);
+      return { x: lerp(spread.x, b.x, s), y: lerp(spread.y, b.y, s), z: lerp(spread.z, b.z, s) };
+    }
+    if (prev) {
+      const s = smoothstep((t - prev.end) / RELAX);
+      const a = hoverOver(prev, wrist);
+      return { x: lerp(a.x, spread.x, s), y: lerp(a.y, spread.y, s), z: lerp(a.z, spread.z, s) };
+    }
+    return spread;
+  }
+
+  function hoverOver(n: PerformanceNote, wrist: Vec3): Vec3 {
+    return {
+      x: keyCenterX(n.midi),
+      y: keyTopY(n.midi) + 12,
+      z: Math.min(contactZ(n.midi) + 6, wrist.z - 96),
+    };
+  }
+
+  function fingerPose(hand: Hand, finger: Finger, t: number, wrist: Vec3): FingerPose {
+    const list = byHandFinger.get(`${hand}${finger}`);
+    const home = fingerHome(hand, finger, t, wrist);
     let best: PerformanceNote | null = null;
     let bestW = 0;
     if (list && list.length > 0) {
@@ -336,6 +390,16 @@ export function buildChoreoProgram(score: PerformanceScore): ChoreoProgram {
       fingersL.push(fingerPose('L', f, t, wristL));
       fingersR.push(fingerPose('R', f, t, wristR));
     }
+    // wrist roll toward whichever side of the hand is doing the work
+    const rollOf = (hand: Hand, fingers: FingerPose[]): number => {
+      let r = 0;
+      for (let i = 0; i < 5; i++) {
+        r += fingers[i].press * (HOME_OFFSETS[hand][(i + 1) as Finger] / 30);
+      }
+      return Math.min(1, Math.max(-1, r)) * 0.2;
+    };
+    const rollL = rollOf('L', fingersL);
+    const rollR = rollOf('R', fingersR);
     const keys = new Float32Array(KEY_COUNT);
     keysAt(t, keys);
 
@@ -348,8 +412,8 @@ export function buildChoreoProgram(score: PerformanceScore): ChoreoProgram {
 
     return {
       hands: {
-        L: { wrist: wristL, fingers: fingersL },
-        R: { wrist: wristR, fingers: fingersR },
+        L: { wrist: wristL, fingers: fingersL, roll: rollL },
+        R: { wrist: wristR, fingers: fingersR, roll: rollR },
       },
       body: {
         leanX: Math.min(1, Math.max(-1, (centroid - KEYBOARD_WIDTH_MM / 2) / 600)) * 0.14,

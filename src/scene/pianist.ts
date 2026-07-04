@@ -294,6 +294,8 @@ export function createPianist(): PianistRig {
   const hipW = new THREE.Vector3();
   const kneeW = new THREE.Vector3();
   const UP_Y = new THREE.Vector3(0, 1, 0);
+  const _rollQ = new THREE.Quaternion();
+  const _backAxis = new THREE.Vector3();
 
   function applyArm(handKey: Hand, frame: PoseFrame): void {
     const arm = arms[handKey];
@@ -328,12 +330,18 @@ export function createPianist(): PianistRig {
     up.crossVectors(back, right).normalize(); // Y = Z×X
     mtx.makeBasis(right, up, back);
     arm.hand.quaternion.setFromRotationMatrix(mtx);
+    // wrist roll toward the working side (ulnar/radial deviation look)
+    _rollQ.setFromAxisAngle(_backAxis.copy(back), pose.roll * (handKey === 'R' ? -1 : 1));
+    arm.hand.quaternion.premultiply(_rollQ);
     arm.hand.updateMatrixWorld(true);
 
     // fingers
     for (let i = 0; i < 5; i++) {
       const chain = arm.fingers[i];
       const fp = pose.fingers[i];
+      // biomechanical coupling: neighbors of a pressing finger flex a little
+      const coupling =
+        0.2 * ((pose.fingers[i - 1]?.press ?? 0) + (pose.fingers[i + 1]?.press ?? 0)) * (1 - fp.press);
       kbToWorld(fp.tip.x, fp.tip.y, fp.tip.z, tipW);
       tipLocal.copy(tipW);
       chain.yaw.parent!.worldToLocal(tipLocal);
@@ -359,9 +367,9 @@ export function createPianist(): PianistRig {
       const cosInner = THREE.MathUtils.clamp((l1 * l1 + l2 * l2 - d * d) / (2 * l1 * l2), -1, 1);
       const bend = Math.PI - Math.acos(cosInner);
       const curlBias = 0.35 + fp.curl * 0.5;
-      chain.mcp.rotation.x = THREE.MathUtils.clamp(-(phi - a1) - 0.05, -1.45, 0.1);
-      chain.pip.rotation.x = THREE.MathUtils.clamp(-bend * (0.72 + 0.1 * curlBias), -1.9, 0);
-      chain.dip.rotation.x = THREE.MathUtils.clamp(-bend * (0.42 * curlBias), -1.2, 0);
+      chain.mcp.rotation.x = THREE.MathUtils.clamp(-(phi - a1) - 0.05 - coupling * 0.3, -1.45, 0.1);
+      chain.pip.rotation.x = THREE.MathUtils.clamp(-bend * (0.72 + 0.1 * curlBias) - coupling, -1.9, 0);
+      chain.dip.rotation.x = THREE.MathUtils.clamp(-bend * (0.42 * curlBias) - coupling * 0.7, -1.2, 0);
     }
   }
 
@@ -429,5 +437,6 @@ function neutralHand(hand: Hand) {
       curl: 0.45,
       splay: 0,
     })),
+    roll: 0,
   };
 }

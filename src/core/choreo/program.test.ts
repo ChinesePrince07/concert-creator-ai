@@ -100,6 +100,46 @@ describe('buildChoreoProgram', () => {
   });
 });
 
+describe('hand shaping (realism)', () => {
+  it('prepares a finger over its upcoming key well before the strike', () => {
+    seq = 0;
+    // RH thumb plays C4 at t=1, then G4 at t=3 — by t=2.5 the thumb should
+    // already hover near G4, not sit at a static spread offset
+    const notes = [pnote(60, 1.0, 0.5, 'R', 1), pnote(67, 3.0, 0.5, 'R', 1)];
+    const program = buildChoreoProgram(makeScore(notes));
+    const frame = program.sample(2.5);
+    const thumbX = frame.hands.R.fingers[0].tip.x;
+    expect(Math.abs(thumbX - keyCenterX(67))).toBeLessThanOrEqual(40);
+  });
+
+  it('keeps idle fingers hovering near the keys their hand actually covers', () => {
+    seq = 0;
+    // RH plays a C4–E4–G4 chord (fingers 1,3,5). Finger 2 has no notes at
+    // all — it should drape near the chord region, between thumb and middle
+    const notes = [
+      pnote(60, 1.0, 1.2, 'R', 1),
+      pnote(64, 1.0, 1.2, 'R', 3),
+      pnote(67, 1.0, 1.2, 'R', 5),
+    ];
+    const program = buildChoreoProgram(makeScore(notes));
+    const frame = program.sample(1.5);
+    const idleIndexX = frame.hands.R.fingers[1].tip.x; // finger 2
+    expect(idleIndexX).toBeGreaterThan(keyCenterX(60) - 30);
+    expect(idleIndexX).toBeLessThan(keyCenterX(67) + 30);
+  });
+
+  it('rolls the wrist toward the pressing finger', () => {
+    seq = 0;
+    // pinky-side press should produce positive roll (RH), thumb-side negative
+    const pinky = buildChoreoProgram(makeScore([pnote(72, 1.0, 0.8, 'R', 5)]));
+    const thumb = buildChoreoProgram(makeScore([pnote(60, 1.0, 0.8, 'R', 1)]));
+    const rollPinky = pinky.sample(1.3).hands.R.roll;
+    const rollThumb = thumb.sample(1.3).hands.R.roll;
+    expect(rollPinky).toBeGreaterThan(0.02);
+    expect(rollThumb).toBeLessThan(-0.02);
+  });
+});
+
 describe('detectPhrases', () => {
   it('splits phrases on onset gaps of at least 0.9s', () => {
     seq = 0;
