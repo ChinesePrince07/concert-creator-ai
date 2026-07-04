@@ -53,6 +53,7 @@ export function openRenderModal(opts: {
   const { scene, project } = opts;
   let res = RESOLUTIONS[1];
   let fps = 30;
+  let quality: 'standard' | 'cinema' = 'cinema';
   let controller: AbortController | null = null;
 
   const backdrop = el('div', { class: 'modal-backdrop' });
@@ -73,7 +74,8 @@ export function openRenderModal(opts: {
   function estimate(): string {
     const frames = Math.ceil(project.perf.score.duration * fps);
     const mb = (res.w * res.h * fps * 0.09 * project.perf.score.duration) / 8 / 1e6;
-    return `${frames.toLocaleString()} frames · ≈${mb < 100 ? mb.toFixed(0) : Math.round(mb / 10) * 10} MB · offline render, roughly 1–4× realtime`;
+    const speed = quality === 'cinema' ? 'a few minutes for long pieces' : 'well under realtime';
+    return `${frames.toLocaleString()} frames · ≈${mb < 100 ? mb.toFixed(0) : Math.round(mb / 10) * 10} MB · ${speed}`;
   }
 
   function renderConfig(): void {
@@ -97,6 +99,21 @@ export function openRenderModal(opts: {
       fpsSeg.append(b);
     });
 
+    const qualitySeg = el('div', { class: 'seg' });
+    (
+      [
+        ['standard', 'STANDARD — FAST'],
+        ['cinema', 'CINEMA — SUPERSAMPLED'],
+      ] as const
+    ).forEach(([id, label]) => {
+      const b = el('button', { text: label, class: quality === id ? 'on' : '' });
+      b.onclick = () => {
+        quality = id;
+        renderConfig();
+      };
+      qualitySeg.append(b);
+    });
+
     const codecLine = el('div', { class: 'meta', text: 'Probing encoders…' });
     void pickCodecs(res.w, res.h, fps)
       .then((p) => {
@@ -111,6 +128,7 @@ export function openRenderModal(opts: {
       el('div', { class: 'sub', text: `${project.name} · ${fmtTime(project.perf.score.duration)}` }),
       el('div', { class: 'group' }, [el('label', { text: 'Resolution' }), resSeg]),
       el('div', { class: 'group' }, [el('label', { text: 'Frame rate' }), fpsSeg]),
+      el('div', { class: 'group' }, [el('label', { text: 'Quality' }), qualitySeg]),
       codecLine,
       el('div', { class: 'actions' }, [
         el('button', {
@@ -204,9 +222,8 @@ export function openRenderModal(opts: {
     controller = new AbortController();
     const startedAt = performance.now();
     opts.onExportingChange(true);
-    scene.setQuality('export');
+    scene.setQuality(quality === 'cinema' ? 'cinema' : 'export');
     // export whatever view is active — Cinema, Synthesia Top View, First Person…
-    scene.resize(res.w, res.h, 1);
     renderProgress(0, Math.ceil(project.perf.score.duration * fps), startedAt);
     try {
       const result = await exportVideo({
@@ -216,6 +233,7 @@ export function openRenderModal(opts: {
         width: res.w,
         height: res.h,
         fps,
+        supersample: quality === 'cinema' ? 2 : 1,
         signal: controller.signal,
         onProgress: (frame, total) => renderProgress(frame, total, startedAt),
       });

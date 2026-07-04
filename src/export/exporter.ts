@@ -12,6 +12,8 @@ export interface ExportOptions {
   width: number;
   height: number;
   fps: number;
+  /** render at N× resolution and downscale before encoding (Cinema quality) */
+  supersample?: number;
   onProgress(frame: number, totalFrames: number): void;
   signal: AbortSignal;
 }
@@ -28,8 +30,26 @@ export interface ExportResult {
  */
 export async function exportVideo(opts: ExportOptions): Promise<ExportResult> {
   const { scene, duration, pcm, width, height, fps, onProgress, signal } = opts;
+  const ss = Math.max(1, Math.min(2, opts.supersample ?? 1));
   const plan = await pickCodecs(width, height, fps);
   const totalFrames = Math.ceil(duration * fps);
+
+  // supersampled frames are downscaled onto this canvas before encoding
+  let frameSource: HTMLCanvasElement | OffscreenCanvas = scene.canvas;
+  let downscale: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null = null;
+  if (ss > 1) {
+    const ds =
+      typeof OffscreenCanvas !== 'undefined'
+        ? new OffscreenCanvas(width, height)
+        : Object.assign(document.createElement('canvas'), { width, height });
+    ds.width = width;
+    ds.height = height;
+    const ctx = ds.getContext('2d') as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    downscale = ctx;
+    frameSource = ds;
+  }
 
   const muxer =
     plan.container === 'mp4'
@@ -110,6 +130,8 @@ export async function exportVideo(opts: ExportOptions): Promise<ExportResult> {
   const durationUs = frameDurationUs(fps);
   const keyEvery = fps * 2;
 
+  scene.resize(width * ss, height * ss, 1);
+
   for (let frame = 0; frame < totalFrames; frame++) {
     if (signal.aborted) {
       videoEncoder.close();
@@ -120,7 +142,8 @@ export async function exportVideo(opts: ExportOptions): Promise<ExportResult> {
 
     const t = frame / fps;
     scene.renderAt(Math.min(t, duration - 1e-4), 1 / fps);
-    const vf = new VideoFrame(scene.canvas, {
+    if (downscale) downscale.drawImage(scene.canvas, 0, 0, width, height);
+    const vf = new VideoFrame(frameSource, {
       timestamp: frameTimestampUs(frame, fps),
       duration: durationUs,
     });

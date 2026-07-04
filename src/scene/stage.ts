@@ -48,7 +48,7 @@ export interface ConcertScene {
   getCameraMode(): CameraMode;
   setVisuals(v: Partial<VisualSettings>): void;
   resize(w: number, h: number, dpr: number): void;
-  setQuality(q: 'preview' | 'export'): void;
+  setQuality(q: 'preview' | 'export' | 'cinema'): void;
   dispose(): void;
   readonly canvas: HTMLCanvasElement;
 }
@@ -500,7 +500,17 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
       post.setSize(w, h);
     },
     setQuality(q) {
-      post.setQuality(q);
+      post.setQuality(q === 'preview' ? 'preview' : 'export');
+      // cinema: crisper contact shadows, worth the offline cost
+      const res = q === 'cinema' ? 4096 : 2048;
+      if (key.shadow.mapSize.x !== res) {
+        key.shadow.mapSize.set(res, res);
+        key.shadow.map?.dispose();
+        key.shadow.map = null;
+        keysAccent.shadow.mapSize.set(res / 2, res / 2);
+        keysAccent.shadow.map?.dispose();
+        keysAccent.shadow.map = null;
+      }
     },
     dispose() {
       post.dispose();
