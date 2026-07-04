@@ -20,6 +20,7 @@
     "@fontsource/ibm-plex-mono": "^5.2.7",
     "@spotify/basic-pitch": "^1.0.1",
     "@tonejs/midi": "^2.0.28",
+    "@webxr-input-profiles/assets": "^1.0.20",
     "mp4-muxer": "^5.2.1",
     "three": "^0.182.0",
     "webm-muxer": "^5.0.3"

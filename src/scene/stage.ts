@@ -9,6 +9,7 @@ import { type CameraMode, type CameraState, evaluateCamera } from './cameras';
 import { createKeyboard } from './keys';
 import { createPiano, type PianoModelId } from './piano';
 import { type CharacterId } from './pianist';
+import { loadXRHandScenes } from './xrHands';
 
 export { PIANO_MODELS, type PianoModelId } from './piano';
 export { CHARACTERS, type CharacterId } from './pianist';
@@ -259,6 +260,13 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
   let pianist = createPianist(DEFAULT_VISUALS.character);
   let character: CharacterId = DEFAULT_VISUALS.character;
   scene.add(pianist.group);
+  const xrHands = loadXRHandScenes();
+  const attachHands = (target: typeof pianist) => {
+    void xrHands.then((scenes) => {
+      if (scenes && pianist === target) target.attachXRHands(scenes);
+    });
+  };
+  attachHands(pianist);
   const roll = createRoll();
   scene.add(roll.group);
 
@@ -479,6 +487,7 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
         pianist = createPianist(visuals.character);
         scene.add(pianist.group);
         character = visuals.character;
+        attachHands(pianist);
       }
       applyMood();
       applyModeVisibility();

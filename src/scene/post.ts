@@ -4,6 +4,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
@@ -65,6 +66,9 @@ export function createPost(
   const composer = new EffectComposer(renderer, target);
 
   const renderPass = new RenderPass(scene, camera);
+  const gtao = new GTAOPass(scene, camera, size.x, size.y);
+  gtao.output = GTAOPass.OUTPUT.Default;
+  gtao.blendIntensity = 0.75;
   const bloom = new UnrealBloomPass(size.clone(), 0.26, 0.6, 0.9);
   const bokeh = new BokehPass(scene, camera, { focus: 2.2, aperture: 0.00016, maxblur: 0.0075 });
   bokeh.enabled = false;
@@ -74,6 +78,7 @@ export function createPost(
   const output = new OutputPass();
 
   composer.addPass(renderPass);
+  composer.addPass(gtao);
   composer.addPass(bokeh);
   composer.addPass(bloom);
   composer.addPass(grain);

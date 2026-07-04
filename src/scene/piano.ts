@@ -162,13 +162,47 @@ export function createPiano(modelId: PianoModelId = 'steinway'): PianoRig {
   orientPlan(frame.geometry, CASE_FRONT_Z - 0.06, CASE_BASE_Y + 0.212);
   group.add(frame);
 
-  // damper/pin-block cover: dark panel over the front interior
+  // damper cover panel, pushed back to expose the pin block
   const cover = new THREE.Mesh(
-    new THREE.BoxGeometry(1.23 * W, 0.014, 0.42),
+    new THREE.BoxGeometry(1.23 * W, 0.014, 0.28),
     new THREE.MeshPhysicalMaterial({ color: 0x0a0a0b, roughness: 0.4, clearcoat: 0.5 }),
   );
-  cover.position.set(0, CASE_BASE_Y + CASE_H - 0.045, CASE_FRONT_Z - 0.24);
+  cover.position.set(0, CASE_BASE_Y + CASE_H - 0.045, CASE_FRONT_Z - 0.34);
   group.add(cover);
+
+  // tuning pins: two staggered rows across the exposed pin block
+  const pinMat = new THREE.MeshStandardMaterial({ color: 0xb9bcc4, metalness: 0.95, roughness: 0.38 });
+  const pinGeo = new THREE.CylinderGeometry(0.0032, 0.0032, 0.042, 8);
+  const pinRows = 2;
+  const pinsPerRow = 76;
+  const pins = new THREE.InstancedMesh(pinGeo, pinMat, pinRows * pinsPerRow);
+  {
+    const pm = new THREE.Matrix4();
+    const pq = new THREE.Quaternion();
+    const ps = new THREE.Vector3(1, 1, 1);
+    let idx = 0;
+    for (let row = 0; row < pinRows; row++) {
+      for (let i = 0; i < pinsPerRow; i++) {
+        const x = THREE.MathUtils.lerp(-0.56 * W, 0.56 * W, (i + (row % 2) * 0.5) / pinsPerRow);
+        const z = CASE_FRONT_Z - 0.065 - row * 0.045;
+        pm.compose(new THREE.Vector3(x, CASE_BASE_Y + CASE_H - 0.028, z), pq, ps);
+        pins.setMatrixAt(idx++, pm);
+      }
+    }
+  }
+  pins.castShadow = true;
+  group.add(pins);
+
+  // hammer rail: felt-topped bar between the pins and the damper cover
+  const rail = new THREE.Mesh(new THREE.BoxGeometry(1.2 * W, 0.02, 0.035), black);
+  rail.position.set(0, CASE_BASE_Y + CASE_H - 0.05, CASE_FRONT_Z - 0.17);
+  group.add(rail);
+  const railFelt = new THREE.Mesh(
+    new THREE.BoxGeometry(1.2 * W, 0.006, 0.035),
+    new THREE.MeshStandardMaterial({ color: cfg.feltColor, roughness: 1 }),
+  );
+  railFelt.position.set(0, CASE_BASE_Y + CASE_H - 0.037, CASE_FRONT_Z - 0.17);
+  group.add(railFelt);
 
   // strings hint: thin bright lines fanning toward the tail
   const stringMat = new THREE.MeshStandardMaterial({ color: cfg.stringColor, metalness: 0.95, roughness: 0.3 });

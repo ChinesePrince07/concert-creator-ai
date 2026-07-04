@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import type { PoseFrame } from '../core/choreo/program';
+import { createXRHandRig, type FingerChainAngles, type XRHandRig } from './xrHands';
 import type { Hand } from '../core/types';
 import { aimSegment, solveTwoBone } from './ik';
 import { kbToWorld } from './mapping';
@@ -73,6 +74,8 @@ export interface PianistRig {
   setHeadVisible(v: boolean): void;
   /** Synthesia framing: only forearms + hands, everything else hidden */
   setHandsOnly(v: boolean): void;
+  /** swap procedural hands for the realistic WebXR skinned hands */
+  attachXRHands(scenes: { left: THREE.Group; right: THREE.Group }): void;
   dispose(): void;
 }
 
@@ -95,6 +98,9 @@ interface ArmRig {
   elbowBall: THREE.Mesh;
   hand: THREE.Group; // positioned at wrist, oriented from finger targets
   fingers: FingerChain[];
+  /** procedural palm/finger meshes, hidden when the XR hand is attached */
+  handVisuals: THREE.Object3D[];
+  xr?: XRHandRig;
   side: 1 | -1; // R = -? set below
 }
 
@@ -464,7 +470,8 @@ export function createPianist(characterId: CharacterId = 'nocturne'): PianistRig
       }
       fingers.push({ yaw: yawG, mcp, pip, dip, lengths: s.l });
     }
-    return { shoulder, elbow, elbowBall, hand, fingers, side: side as 1 | -1 };
+    const handVisuals: THREE.Object3D[] = [palm, ridge, ...fingers.map((f) => f.yaw)];
+    return { shoulder, elbow, elbowBall, hand, fingers, handVisuals, side: side as 1 | -1 };
 
     function knuckle(r: number): THREE.Mesh {
       const k = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 10), skin);
@@ -528,6 +535,13 @@ export function createPianist(characterId: CharacterId = 'nocturne'): PianistRig
   const UP_Y = new THREE.Vector3(0, 1, 0);
   const _rollQ = new THREE.Quaternion();
   const _backAxis = new THREE.Vector3();
+  const _xrAngles: FingerChainAngles[] = Array.from({ length: 5 }, () => ({
+    rotY: 0,
+    rotZ: 0,
+    mcpX: 0,
+    pipX: 0,
+    dipX: 0,
+  }));
 
   function applyArm(handKey: Hand, frame: PoseFrame): void {
     const arm = arms[handKey];
@@ -581,12 +595,9 @@ export function createPianist(characterId: CharacterId = 'nocturne'): PianistRig
 
       const isThumb = i === 0;
       const yaw = Math.atan2(-tipLocal.x, -tipLocal.z);
-      if (isThumb) {
-        const yawBase = arm.side * 0.85;
-        chain.yaw.rotation.y = yawBase * 0.6 + THREE.MathUtils.clamp(yaw, -1.2, 1.2) * 0.5 + fp.splay * 0.08;
-      } else {
-        chain.yaw.rotation.y = THREE.MathUtils.clamp(yaw, -0.55, 0.55) * 0.85 + fp.splay * 0.08;
-      }
+      const yawSolved = isThumb
+        ? THREE.MathUtils.clamp(yaw, -1.2, 1.2) * 0.5 + fp.splay * 0.08
+        : THREE.MathUtils.clamp(yaw, -0.55, 0.55) * 0.85 + fp.splay * 0.08;
 
       const horiz = Math.hypot(tipLocal.x, tipLocal.z);
       const dy = tipLocal.y;
@@ -599,10 +610,26 @@ export function createPianist(characterId: CharacterId = 'nocturne'): PianistRig
       const cosInner = THREE.MathUtils.clamp((l1 * l1 + l2 * l2 - d * d) / (2 * l1 * l2), -1, 1);
       const bend = Math.PI - Math.acos(cosInner);
       const curlBias = 0.35 + fp.curl * 0.5;
-      chain.mcp.rotation.x = THREE.MathUtils.clamp(-(phi - a1) - 0.05 - coupling * 0.3, -1.45, 0.1);
-      chain.pip.rotation.x = THREE.MathUtils.clamp(-bend * (0.72 + 0.1 * curlBias) - coupling, -1.9, 0);
-      chain.dip.rotation.x = THREE.MathUtils.clamp(-bend * (0.42 * curlBias) - coupling * 0.7, -1.2, 0);
+      const mcpX = THREE.MathUtils.clamp(-(phi - a1) - 0.05 - coupling * 0.3, -1.45, 0.1);
+      const pipX = THREE.MathUtils.clamp(-bend * (0.72 + 0.1 * curlBias) - coupling, -1.9, 0);
+      const dipX = THREE.MathUtils.clamp(-bend * (0.42 * curlBias) - coupling * 0.7, -1.2, 0);
+
+      if (arm.xr) {
+        // asset rest already curls slightly, splays, and opposes the thumb —
+        // apply the solved pose as a damped deviation from that rest
+        _xrAngles[i].rotY = yawSolved * (isThumb ? 0.4 : 0.55);
+        _xrAngles[i].rotZ = 0;
+        _xrAngles[i].mcpX = isThumb ? mcpX * 0.6 : mcpX * 0.92 + 0.03;
+        _xrAngles[i].pipX = pipX * 0.85 - 0.05;
+        _xrAngles[i].dipX = dipX * 0.8;
+      } else {
+        chain.yaw.rotation.y = isThumb ? arm.side * 0.85 * 0.6 + yawSolved : yawSolved;
+        chain.mcp.rotation.x = mcpX;
+        chain.pip.rotation.x = pipX;
+        chain.dip.rotation.x = dipX;
+      }
     }
+    if (arm.xr) arm.xr.apply(_xrAngles);
   }
 
   function applyLeg(leg: Leg, footTarget: THREE.Vector3, pedalPitch: number): void {
@@ -666,6 +693,21 @@ export function createPianist(characterId: CharacterId = 'nocturne'): PianistRig
       for (const leg of [legL, legR]) {
         leg.knee.visible = !v;
         leg.foot.visible = !v;
+      }
+    },
+    attachXRHands(scenes) {
+      const tint = new THREE.Color(spec.face ? spec.skinColor : 0x17161c);
+      for (const [handKey, source] of [
+        ['L', scenes.left],
+        ['R', scenes.right],
+      ] as const) {
+        const arm = arms[handKey];
+        if (arm.xr) continue;
+        const rig = createXRHandRig(source, handKey);
+        rig.setTint(tint, !spec.face);
+        arm.hand.add(rig.root);
+        arm.xr = rig;
+        for (const v of arm.handVisuals) v.visible = false;
       }
     },
     dispose() {

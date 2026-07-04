@@ -14,8 +14,21 @@ const dest = join(root, 'public/models/basic-pitch');
 const src = candidates.find((c) => existsSync(c));
 if (!src) {
   console.warn('[copy-model] basic-pitch model not found in node_modules; transcription will be unavailable until `npm install` completes.');
-  process.exit(0);
+} else {
+  mkdirSync(dest, { recursive: true });
+  cpSync(src, dest, { recursive: true });
+  console.log(`[copy-model] copied ${src} -> ${dest}`);
 }
-mkdirSync(dest, { recursive: true });
-cpSync(src, dest, { recursive: true });
-console.log(`[copy-model] copied ${src} -> ${dest}`);
+
+// WebXR generic hand meshes (Apache-2.0) → realistic skinned hands
+const handsSrc = join(root, 'node_modules/@webxr-input-profiles/assets/dist/profiles/generic-hand');
+const handsDest = join(root, 'public/assets/hands');
+if (existsSync(handsSrc)) {
+  mkdirSync(handsDest, { recursive: true });
+  for (const f of ['left.glb', 'right.glb']) {
+    cpSync(join(handsSrc, f), join(handsDest, f));
+  }
+  console.log(`[copy-model] copied webxr hands -> ${handsDest}`);
+} else {
+  console.warn('[copy-model] webxr hand assets missing; falling back to procedural hands.');
+}
