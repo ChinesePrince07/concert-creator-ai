@@ -70,6 +70,8 @@ export interface PianistRig {
   setVisible(v: boolean): void;
   /** hide head + neck for first-person view */
   setHeadVisible(v: boolean): void;
+  /** Synthesia framing: only forearms + hands, everything else hidden */
+  setHandsOnly(v: boolean): void;
   dispose(): void;
 }
 
@@ -89,6 +91,7 @@ interface FingerChain {
 interface ArmRig {
   shoulder: THREE.Group; // upper-arm pivot (aims at elbow)
   elbow: THREE.Group; // forearm pivot (aims at wrist)
+  elbowBall: THREE.Mesh;
   hand: THREE.Group; // positioned at wrist, oriented from finger targets
   fingers: FingerChain[];
   side: 1 | -1; // R = -? set below
@@ -370,7 +373,7 @@ export function createPianist(characterId: CharacterId = 'nocturne'): PianistRig
       dip.add(boneZ(s.l[2], 0.0062, true));
       fingers.push({ yaw: yawG, mcp, pip, dip, lengths: s.l });
     }
-    return { shoulder, elbow, hand, fingers, side: side as 1 | -1 };
+    return { shoulder, elbow, elbowBall, hand, fingers, side: side as 1 | -1 };
 
     function knuckle(r: number): THREE.Mesh {
       const k = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 10), skin);
@@ -567,6 +570,15 @@ export function createPianist(characterId: CharacterId = 'nocturne'): PianistRig
     },
     setHeadVisible(v: boolean) {
       neck.visible = v;
+    },
+    setHandsOnly(v: boolean) {
+      root.visible = !v;
+      arms.L.elbowBall.visible = !v;
+      arms.R.elbowBall.visible = !v;
+      for (const leg of [legL, legR]) {
+        leg.knee.visible = !v;
+        leg.foot.visible = !v;
+      }
     },
     dispose() {
       group.traverse((obj) => {

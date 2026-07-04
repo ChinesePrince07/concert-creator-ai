@@ -18,8 +18,8 @@ const CAMERA_MODES: Array<{ id: CameraMode; label: string }> = [
   { id: 'FP', label: 'FIRST PERSON' },
 ];
 const HAND_PALETTES: Array<{ l: string; r: string; name: string }> = [
+  { l: '#3f8cff', r: '#3ecf5a', name: 'Classic' },
   { l: '#53d5ff', r: '#ffb454', name: 'Stage' },
-  { l: '#7fe08a', r: '#f2803b', name: 'Ember' },
   { l: '#9d8cff', r: '#ffd54f', name: 'Nocturne' },
   { l: '#ff7ab6', r: '#7ab8ff', name: 'Neon' },
 ];

@@ -141,10 +141,10 @@ export function evaluateCamera(
       evaluateShot({ type: 'CLOSE_HANDS', start: 0, end: 3600, seed: 12 }, t, ctx, state);
       break;
     case 'TOP': {
-      // Synthesia view: hands on keys at the bottom, tiles falling from above
-      state.pos.set(0, 2.5, 0.56);
-      state.target.set(0, 0.72, -0.34);
-      state.fov = 35;
+      // classic Synthesia framing: telephoto front-on, keys flat and low
+      state.pos.set(0, 1.56, 1.5);
+      state.target.set(0, 0.77, -0.04);
+      state.fov = 25;
       state.focus = state.pos.distanceTo(state.target);
       break;
     }

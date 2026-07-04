@@ -1,6 +1,13 @@
 import * as THREE from 'three';
-import { MIDI_MIN, isBlack, keyCenterX, keyIndex } from '../core/keyboard';
-import type { PerformanceScore } from '../core/types';
+import {
+  BLACK_KEY_WIDTH_MM,
+  KEYBOARD_WIDTH_MM,
+  MIDI_MIN,
+  WHITE_KEY_LENGTH_MM,
+  isBlack,
+  keyCenterX,
+} from '../core/keyboard';
+import type { Hand, PerformanceScore } from '../core/types';
 import { KEY_TOP_Y, kbToWorld } from './mapping';
 
 /**
@@ -18,9 +25,11 @@ export interface RollLayer {
   setScore(score: PerformanceScore | null): void;
   setColors(left: THREE.Color, right: THREE.Color): void;
   setZoom(z: number): void;
-  /** tilt of the tile plane about the strike line: 0 = flat over the piano, ~1.0 = Synthesia ramp */
+  /** tilt of the tile plane about the strike line: π/2 = vertical wall (classic), ~1.0 = fp ramp */
   setPitch(rad: number): void;
-  update(t: number, keys: Float32Array): void;
+  /** minimal keyboard dressing (front rail + felt) for when the piano body is hidden */
+  setRailVisible(v: boolean): void;
+  update(t: number, keys: Float32Array, highlight?: { color: THREE.Color; amount: number }[]): void;
   setVisible(v: boolean): void;
 }
 
@@ -72,7 +81,7 @@ export function createRoll(): RollLayer {
         float d = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
         float alpha = 1.0 - smoothstep(-0.0012, 0.0012, d);
         float core = 1.0 - smoothstep(-0.008, 0.0, d);
-        vec3 col = vColor * (0.75 + 0.9 * vGlow) + vec3(0.25) * core * vGlow;
+        vec3 col = vColor * (0.7 + 1.15 * vGlow) + vec3(0.3) * core * vGlow;
         gl_FragColor = vec4(col, alpha * 0.96);
       }
     `,
@@ -113,9 +122,115 @@ export function createRoll(): RollLayer {
   }
   group.add(leds);
 
+  // ---- pressed-key glow + under-key light fans (the reference look) -------
+  const glowShader = (fan: boolean) =>
+    new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      uniforms: {},
+      vertexShader: /* glsl */ `
+        varying vec2 vUv;
+        varying vec3 vColor;
+        varying float vAmt;
+        attribute vec3 iColor;
+        attribute float iAmt;
+        void main() {
+          vUv = uv;
+          vColor = iColor;
+          vAmt = iAmt;
+          gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: fan
+        ? /* glsl */ `
+        varying vec2 vUv; varying vec3 vColor; varying float vAmt;
+        void main() {
+          // widening fan, brightest at the top, fading down
+          float spread = mix(0.42, 0.06, vUv.y);
+          float lateral = 1.0 - smoothstep(spread * 0.25, spread, abs(vUv.x - 0.5));
+          float fade = pow(max(vUv.y, 0.0), 1.7);
+          gl_FragColor = vec4(vColor * 1.6, lateral * fade * vAmt * 0.85);
+        }
+      `
+        : /* glsl */ `
+        varying vec2 vUv; varying vec3 vColor; varying float vAmt;
+        void main() {
+          // key-top glow: hot toward the strike line (rear), soft sides
+          float lateral = 1.0 - smoothstep(0.12, 0.5, abs(vUv.x - 0.5));
+          float depth = pow(max(vUv.y, 0.0), 1.5);
+          vec3 col = mix(vColor, vec3(1.0), 0.35 * depth * vAmt);
+          gl_FragColor = vec4(col * 1.7, lateral * (0.25 + 0.75 * depth) * vAmt);
+        }
+      `,
+    });
+
+  function makeOverlay(fan: boolean): {
+    mesh: THREE.InstancedMesh;
+    color: THREE.InstancedBufferAttribute;
+    amt: THREE.InstancedBufferAttribute;
+  } {
+    const geo = new THREE.PlaneGeometry(1, 1);
+    geo.translate(0, 0.5, 0); // origin at bottom edge
+    const inst = new THREE.InstancedMesh(geo, glowShader(fan), 88);
+    inst.frustumCulled = false;
+    inst.renderOrder = fan ? 980 : 985;
+    const color = new THREE.InstancedBufferAttribute(new Float32Array(88 * 3), 3);
+    const amt = new THREE.InstancedBufferAttribute(new Float32Array(88), 1);
+    inst.geometry.setAttribute('iColor', color);
+    inst.geometry.setAttribute('iAmt', amt);
+    if (!new URLSearchParams(location.search).has('noglow')) group.add(inst);
+    return { mesh: inst, color, amt };
+  }
+
+  const topGlow = makeOverlay(false);
+  const fanGlow = makeOverlay(true);
+  {
+    const m = new THREE.Matrix4();
+    const p = new THREE.Vector3();
+    const q = new THREE.Quaternion();
+    const qFlat = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
+    for (let k = 0; k < 88; k++) {
+      const midi = k + MIDI_MIN;
+      const w = (isBlack(midi) ? BLACK_KEY_WIDTH_MM + 4 : 25) / 1000;
+      // key-top glow: lies flat on the key, from front toward the strike line
+      kbToWorld(keyCenterX(midi), (isBlack(midi) ? 13.5 : 1.5) + 1.5, WHITE_KEY_LENGTH_MM, p);
+      m.compose(p, qFlat, new THREE.Vector3(w, WHITE_KEY_LENGTH_MM / 1000, 1));
+      topGlow.mesh.setMatrixAt(k, m);
+      // under-key fan: vertical sheet below the key front, pointing down
+      kbToWorld(keyCenterX(midi), -160, WHITE_KEY_LENGTH_MM + 2, p);
+      q.identity();
+      m.compose(p, q, new THREE.Vector3(w * 3.2, 0.155, 1));
+      fanGlow.mesh.setMatrixAt(k, m);
+    }
+    topGlow.mesh.instanceMatrix.needsUpdate = true;
+    fanGlow.mesh.instanceMatrix.needsUpdate = true;
+  }
+
+  // minimal dressing when the piano body is hidden: front rail + felt line
+  const rail = new THREE.Group();
+  const railBox = new THREE.Mesh(
+    new THREE.BoxGeometry(KEYBOARD_WIDTH_MM / 1000 + 0.06, 0.05, 0.16),
+    new THREE.MeshPhysicalMaterial({ color: 0x08080a, roughness: 0.3, clearcoat: 0.8 }),
+  );
+  railBox.position.set(0, KEY_TOP_Y - 0.037, 0.062);
+  rail.add(railBox);
+  const feltLine = new THREE.Mesh(
+    new THREE.BoxGeometry(KEYBOARD_WIDTH_MM / 1000, 0.006, 0.012),
+    new THREE.MeshStandardMaterial({ color: 0x8c1626, roughness: 1 }),
+  );
+  feltLine.position.set(0, KEY_TOP_Y + 0.004, -0.004);
+  rail.add(feltLine);
+  rail.visible = false;
+  group.add(rail);
+
   const tmp = new THREE.Color();
 
-  function update(t: number, keys: Float32Array): void {
+  function update(
+    t: number,
+    keys: Float32Array,
+    highlight?: { color: THREE.Color; amount: number }[],
+  ): void {
     if (!group.visible || notes.length === 0) {
       noteGeo.instanceCount = 0;
       return;
@@ -152,15 +267,33 @@ export function createRoll(): RollLayer {
 
     for (let k = 0; k < 88; k++) {
       const dip = keys[k];
-      tmp.setRGB(0.06, 0.06, 0.08);
-      if (dip > 0.03) {
-        // color by whichever hand's note is on this key — approximated by
-        // sampling visible notes; cheap variant: white-hot flash
+      const h = highlight?.[k];
+      if (dip > 0.03 && h && h.amount > 0.02) {
+        tmp.copy(h.color).multiplyScalar(0.4 + dip);
+        tmp.r += 0.25 * dip;
+        tmp.g += 0.25 * dip;
+        tmp.b += 0.25 * dip;
+      } else if (dip > 0.03) {
         tmp.setRGB(0.9 * dip + 0.1, 0.85 * dip + 0.1, 0.75 * dip + 0.12);
+      } else {
+        tmp.setRGB(0.06, 0.06, 0.08);
       }
       leds.setColorAt(k, tmp);
+
+      // emissive key glow + under-key light fan
+      const amt = h && h.amount > 0.02 ? Math.min(1, dip * 1.15) : 0;
+      topGlow.amt.setX(k, amt);
+      fanGlow.amt.setX(k, Math.pow(amt, 1.5));
+      if (h && amt > 0) {
+        topGlow.color.setXYZ(k, h.color.r, h.color.g, h.color.b);
+        fanGlow.color.setXYZ(k, h.color.r, h.color.g, h.color.b);
+      }
     }
     if (leds.instanceColor) leds.instanceColor.needsUpdate = true;
+    topGlow.amt.needsUpdate = true;
+    topGlow.color.needsUpdate = true;
+    fanGlow.amt.needsUpdate = true;
+    fanGlow.color.needsUpdate = true;
   }
 
   function firstVisible(t: number): number {
@@ -189,6 +322,9 @@ export function createRoll(): RollLayer {
     },
     setPitch(rad) {
       noteMesh.rotation.x = rad;
+    },
+    setRailVisible(v) {
+      rail.visible = v;
     },
     update,
     setVisible(v) {

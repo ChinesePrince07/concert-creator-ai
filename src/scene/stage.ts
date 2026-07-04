@@ -30,8 +30,8 @@ export interface VisualSettings {
 }
 
 export const DEFAULT_VISUALS: VisualSettings = {
-  leftColor: '#53d5ff',
-  rightColor: '#ffb454',
+  leftColor: '#3f8cff',
+  rightColor: '#3ecf5a',
   showRoll: true,
   showAvatar: true,
   lightMood: 'noir',
@@ -153,6 +153,12 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
   const bounce = new THREE.PointLight(0xffc890, 1.4, 3.5, 2);
   bounce.position.set(0.2, 1.1, -0.6);
   rig.add(bounce);
+
+  // roll modes: the glowing keys light the hands from below (reference look)
+  const handGlowL = new THREE.PointLight(0x3f8cff, 0, 0.45, 1.6);
+  const handGlowR = new THREE.PointLight(0x3ecf5a, 0, 0.45, 1.6);
+  handGlowL.visible = handGlowR.visible = false;
+  scene.add(handGlowL, handGlowR);
 
   // volumetric cones under the two hero spots
   const coneMat = () =>
@@ -279,17 +285,40 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
 
   function applyModeVisibility(): void {
     const rollOn = isRollMode();
+    const classicTop = rollOn && mode === 'TOP';
     roll.setVisible(rollOn);
-    // Synthesia modes keep the live scene — hands stay in frame under the tiles
+    // Synthesia modes keep the hands in frame under the tiles. Classic Top View
+    // strips the world to black void: keys, hands, tiles, nothing else.
     pianist.group.visible = visuals.showAvatar;
-    pianist.setHeadVisible(!(rollOn && mode === 'FP'));
+    pianist.setHeadVisible(!rollOn); // head out of frame in both Synthesia views
+    pianist.setHandsOnly(classicTop); // reference framing: hands + forearms only
     piano.setLidVisible(!rollOn);
-    roll.setPitch(mode === 'FP' ? 0.95 : 0.16);
+    piano.group.visible = !classicTop;
+    roll.setRailVisible(classicTop);
+    floorGroup.visible = !classicTop;
+    roll.setPitch(mode === 'FP' ? 0.95 : Math.PI / 2);
     dust.visible = !rollOn;
+    post.setGrain(rollOn ? 0.018 : 0.045);
+    handGlowL.visible = rollOn;
+    handGlowR.visible = rollOn;
+    // clean, even light on keys and hands against the black void
+    if (classicTop) {
+      hemi.color.set(0xa8b0c2);
+      hemi.intensity = 1.35;
+    } else {
+      hemi.color.set(0x24242e);
+    }
+    // classic view is lit flat — no theatrical spots at all
+    key.visible = !classicTop;
+    rim.visible = !classicTop;
+    keysAccent.visible = !classicTop;
+    bounce.visible = !classicTop;
     // extra readable fill over the keys in roll modes; theatrical rig stays on
-    hemi.intensity =
-      (rollOn ? 0.4 : 0) +
-      (visuals.lightMood === 'warm' ? 0.55 : visuals.lightMood === 'blue' ? 0.38 : 0.45);
+    if (!classicTop) {
+      hemi.intensity =
+        (rollOn ? 0.4 : 0) +
+        (visuals.lightMood === 'warm' ? 0.55 : visuals.lightMood === 'blue' ? 0.38 : 0.45);
+    }
     // the interior is the tile canvas in TOP view — keep the spot off it
     const moodKey = visuals.lightMood === 'warm' ? 115 : visuals.lightMood === 'blue' ? 75 : 70;
     key.intensity = rollOn && mode === 'TOP' ? moodKey * 0.4 : moodKey;
@@ -367,7 +396,21 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
         keyboard.update(frame.keys, highlights);
         if (pianist.group.visible) pianist.apply(frame);
         piano.setPedal(frame.pedal);
-        if (roll.group.visible) roll.update(t, frame.keys);
+        if (roll.group.visible) {
+          roll.update(t, frame.keys, highlights);
+          // key glow spills onto the hands
+          for (const [hand, light, color] of [
+            ['L', handGlowL, colorL],
+            ['R', handGlowR, colorR],
+          ] as const) {
+            const pose = frame.hands[hand];
+            let press = 0;
+            for (const f of pose.fingers) press += f.press;
+            light.color.copy(color);
+            light.intensity = Math.min(1, press) * 0.14;
+            light.position.set((pose.wrist.x - 611) / 1000, 0.84, 0.12);
+          }
+        }
 
         // active-hands center for camera follow
         let pressL = 0;

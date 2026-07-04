@@ -48,6 +48,7 @@ export interface PostChain {
   setSize(w: number, h: number): void;
   setQuality(q: 'preview' | 'export'): void;
   setFocus(distance: number): void;
+  setGrain(amount: number): void;
   dispose(): void;
 }
 
@@ -94,6 +95,9 @@ export function createPost(
     },
     setFocus(distance: number) {
       (bokeh.uniforms as Record<string, THREE.IUniform>).focus.value = distance;
+    },
+    setGrain(amount: number) {
+      grain.uniforms.grain.value = amount;
     },
     dispose() {
       composer.dispose();
