@@ -1,0 +1,36 @@
+{
+  "name": "concert-creator-ai",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Unofficial recreation of Concert Creator AI — turn piano audio/MIDI into a cinematic 3D virtual-pianist video, fully in the browser.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "demos": "node scripts/build-demos.mjs",
+    "postinstall": "node scripts/copy-model.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/fraunces": "^5.2.5",
+    "@fontsource-variable/inter": "^5.2.5",
+    "@spotify/basic-pitch": "^1.0.1",
+    "@tonejs/midi": "^2.0.28",
+    "mp4-muxer": "^5.2.1",
+    "three": "^0.182.0",
+    "webm-muxer": "^5.0.3"
+  },
+  "devDependencies": {
+    "@types/three": "^0.182.0",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.0",
+    "vitest": "^3.2.4"
+  },
+  "allowScripts": {
+    "core-js@3.49.0": true,
+    "esbuild@0.28.1": true
+  }
+}
