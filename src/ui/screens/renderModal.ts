@@ -1,8 +1,43 @@
+import { bakeForBlender } from '../../export/blenderBake';
 import { exportVideo } from '../../export/exporter';
 import { pickCodecs } from '../../export/codecs';
 import type { ConcertScene } from '../../scene/stage';
 import type { ProjectState } from '../../state/store';
-import { el, fmtTime } from '../dom';
+import { el, fmtTime, toast } from '../dom';
+
+function downloadBlob(blob: Blob, name: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = el('a', { href: url, download: name });
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 30_000);
+}
+
+function pcmToWavBlob(l: Float32Array, r: Float32Array, sampleRate: number): Blob {
+  const frames = l.length;
+  const buf = new ArrayBuffer(44 + frames * 4);
+  const v = new DataView(buf);
+  const writeStr = (o: number, s: string) => {
+    for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i));
+  };
+  writeStr(0, 'RIFF');
+  v.setUint32(4, 36 + frames * 4, true);
+  writeStr(8, 'WAVE');
+  writeStr(12, 'fmt ');
+  v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true);
+  v.setUint16(22, 2, true);
+  v.setUint32(24, sampleRate, true);
+  v.setUint32(28, sampleRate * 4, true);
+  v.setUint16(32, 4, true);
+  v.setUint16(34, 16, true);
+  writeStr(36, 'data');
+  v.setUint32(40, frames * 4, true);
+  for (let i = 0; i < frames; i++) {
+    v.setInt16(44 + i * 4, Math.max(-32768, Math.min(32767, Math.round(l[i] * 32767))), true);
+    v.setInt16(46 + i * 4, Math.max(-32768, Math.min(32767, Math.round(r[i] * 32767))), true);
+  }
+  return new Blob([buf], { type: 'audio/wav' });
+}
 
 const RESOLUTIONS = [
   { label: '720p', w: 1280, h: 720 },
@@ -78,6 +113,21 @@ export function openRenderModal(opts: {
       el('div', { class: 'group' }, [el('label', { text: 'Frame rate' }), fpsSeg]),
       codecLine,
       el('div', { class: 'actions' }, [
+        el('button', {
+          class: 'ghost',
+          text: 'EXPORT FOR BLENDER',
+          title: 'Bake the performance + camera to JSON and audio to WAV for offline photoreal rendering (see docs/BLENDER.md)',
+          onclick: () => {
+            const bake = bakeForBlender(project.perf.score, project.perf.choreo, project.perf.shots, fps);
+            downloadBlob(new Blob([JSON.stringify(bake)], { type: 'application/json' }), 'performance.json');
+            downloadBlob(
+              pcmToWavBlob(project.audio.pcm.l, project.audio.pcm.r, project.audio.pcm.sampleRate),
+              'performance.wav',
+            );
+            toast('Baked performance.json + performance.wav — see docs/BLENDER.md');
+          },
+        }),
+        el('span', { class: 'spacer', style: 'flex:1' }),
         el('button', { class: 'ghost', text: 'CANCEL', onclick: () => close() }),
         el('button', { class: 'primary', text: 'RENDER', onclick: () => start() }),
       ]),
