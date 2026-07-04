@@ -28,6 +28,12 @@ Open the app, pick a piece from the built-in programme (Für Elise, Gymnopédie 
 
 `EDIT ANIMATION` opens the note strip: click any note → reassign **hand** (H) or **finger** (1–5), or **mute** it (Q). The AI re-solves fingering/choreography around your pins in well under a second. Camera modes, lighting moods, per-hand note colours and the falling-note roll (Top View / First Person) are in the left rail — mirroring the original's Camera/Visuals panels.
 
+## Pianists & pianos
+
+- **PIANIST** panel: five characters — Elena (gown), Marcus (tailcoat), Yuki, August, and Nocturne, the obsidian sculpture. Stylized-human rather than pseudo-photoreal by design; the realism lives in the motion: fingers pre-shape over the keys they're about to play, neighbouring fingers flex with the pressing one, and the wrist rolls toward the working side. (The original trained on sensor-tracked pianists; this recreation approximates that behaviour with biomechanical rules.)
+- **VISUALS → Piano**: Steinway & Sons D-274, Yamaha CFX, Bösendorfer Imperial (with its extra black bass keys), Shigeru Kawai SK-EX, and Fazioli F308 — procedural design cues per maker.
+- **Top View / First Person** are Synthesia-style modes: the live hands stay in frame while note tiles glide onto the keys; exports honor whichever view is active.
+
 ## Architecture
 
 ```
