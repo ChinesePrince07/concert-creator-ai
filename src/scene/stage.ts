@@ -131,7 +131,7 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
   rim.target.position.set(0, 0.9, 0.3);
   rig.add(rim, rim.target);
 
-  const keysAccent = new THREE.SpotLight(0xffe6c0, 3, 0, 0.36, 0.6, 1.8);
+  const keysAccent = new THREE.SpotLight(0xffe6c0, 1.6, 0, 0.36, 0.6, 1.8);
   keysAccent.position.set(0.4, 2.8, 1.6);
   keysAccent.castShadow = true;
   keysAccent.shadow.mapSize.set(1024, 1024);

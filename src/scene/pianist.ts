@@ -359,9 +359,9 @@ export function createPianist(): PianistRig {
       const cosInner = THREE.MathUtils.clamp((l1 * l1 + l2 * l2 - d * d) / (2 * l1 * l2), -1, 1);
       const bend = Math.PI - Math.acos(cosInner);
       const curlBias = 0.35 + fp.curl * 0.5;
-      chain.mcp.rotation.x = -(phi - a1) * 1.0 - 0.05;
-      chain.pip.rotation.x = -bend * (0.72 + 0.1 * curlBias);
-      chain.dip.rotation.x = -bend * (0.42 * curlBias);
+      chain.mcp.rotation.x = THREE.MathUtils.clamp(-(phi - a1) - 0.05, -1.45, 0.1);
+      chain.pip.rotation.x = THREE.MathUtils.clamp(-bend * (0.72 + 0.1 * curlBias), -1.9, 0);
+      chain.dip.rotation.x = THREE.MathUtils.clamp(-bend * (0.42 * curlBias), -1.2, 0);
     }
   }
 

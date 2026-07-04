@@ -144,8 +144,8 @@ button:disabled { opacity: 0.35; pointer-events: none; }
 .prog-card:hover::after { transform: scaleX(1); }
 .prog-card .num { font-family: var(--serif); font-size: 26px; color: var(--ink-faint); font-style: italic; }
 .prog-card:hover .num { color: var(--gold); }
-.prog-card .t { font-family: var(--serif); font-size: 21px; font-weight: 420; letter-spacing: 0.01em; }
-.prog-card .c { color: var(--ink-dim); font-size: 11px; margin-top: 3px; letter-spacing: 0.12em; text-transform: uppercase; }
+.prog-card .t { display: block; font-family: var(--serif); font-size: 21px; font-weight: 420; letter-spacing: 0.01em; }
+.prog-card .c { display: block; color: var(--ink-dim); font-size: 11px; margin-top: 3px; letter-spacing: 0.12em; text-transform: uppercase; }
 .prog-card .go { color: var(--ink-faint); font-size: 11px; letter-spacing: 0.1em; transition: color 0.15s, transform 0.25s; }
 .prog-card:hover .go { color: var(--gold-bright); transform: translateX(4px); }
 
