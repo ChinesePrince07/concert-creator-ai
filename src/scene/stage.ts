@@ -6,7 +6,10 @@ import type { ShotPlan } from '../core/cinema/planner';
 import { KEY_COUNT, MIDI_MIN, keyIndex } from '../core/keyboard';
 import type { Hand, PerformanceScore } from '../core/types';
 import { type CameraMode, type CameraState, evaluateCamera } from './cameras';
+import { kbToWorld } from './mapping';
 import { createKeyboard } from './keys';
+
+const UP_DEFAULT = new THREE.Vector3(0, 1, 0);
 import { createPiano, type PianoModelId } from './piano';
 import { type CharacterId } from './pianist';
 import { loadXRHandScenes } from './xrHands';
@@ -140,7 +143,7 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
   rim.target.position.set(0, 0.9, 0.3);
   rig.add(rim, rim.target);
 
-  const keysAccent = new THREE.SpotLight(0xffe6c0, 0.8, 0, 0.3, 0.65, 1.8);
+  const keysAccent = new THREE.SpotLight(0xffe6c0, 0.55, 0, 0.3, 0.65, 1.8);
   keysAccent.position.set(0.4, 2.8, 1.6);
   keysAccent.castShadow = true;
   keysAccent.shadow.mapSize.set(1024, 1024);
@@ -293,6 +296,10 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
     focus: 3,
   };
   const activeCenter = new THREE.Vector3(0, 0.78, 0.05);
+  const eyePos = new THREE.Vector3();
+  const eyeQuat = new THREE.Quaternion();
+  const eyeUp = new THREE.Vector3();
+  const gazePoint = new THREE.Vector3();
 
   function isRollMode(): boolean {
     return (mode === 'TOP' || mode === 'FP') && visuals.showRoll;
@@ -450,8 +457,20 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
       keysAccent.position.x = activeCenter.x * 0.85 + 0.25;
       keysAccent.target.position.x = activeCenter.x;
 
-      evaluateCamera(mode, shots, t, { activeCenter, energy: 0.5 }, camState);
+      // head-cam context: the avatar's animated eyes + AI gaze point
+      let eye: { pos: THREE.Vector3; up: THREE.Vector3 } | undefined;
+      let gaze: THREE.Vector3 | undefined;
+      if (frame && pianist.group.visible) {
+        pianist.getEyePose(eyePos, eyeQuat);
+        eyeUp.set(0, 1, 0).applyQuaternion(eyeQuat);
+        kbToWorld(frame.head.gazeX, 4, 50, gazePoint);
+        eye = { pos: eyePos, up: eyeUp };
+        gaze = gazePoint;
+      }
+
+      evaluateCamera(mode, shots, t, { activeCenter, energy: 0.5, eye, gazePoint: gaze }, camState);
       camera.position.copy(camState.pos);
+      camera.up.copy(camState.up ?? UP_DEFAULT);
       camera.lookAt(camState.target);
       if (Math.abs(camera.fov - camState.fov) > 0.01) {
         camera.fov = camState.fov;

@@ -140,6 +140,32 @@ describe('hand shaping (realism)', () => {
   });
 });
 
+describe('gaze (head-cam)', () => {
+  it('anticipates the next entry: gaze moves toward the upcoming register before the strike', () => {
+    seq = 0;
+    // C4 at t=1, then a leap to C6 at t=3 — by t=2.7 the gaze should already
+    // favour the high register over the old one
+    const notes = [pnote(60, 1.0, 0.6, 'R', 1), pnote(96, 3.0, 0.6, 'R', 5)];
+    const program = buildChoreoProgram(makeScore(notes));
+    const gaze = program.sample(2.7).head.gazeX;
+    const dHigh = Math.abs(gaze - keyCenterX(96));
+    const dLow = Math.abs(gaze - keyCenterX(60));
+    expect(dHigh).toBeLessThan(dLow);
+  });
+
+  it('keeps gaze finite and inside the keyboard', () => {
+    seq = 0;
+    const notes = [pnote(21, 0.5, 0.4, 'L', 5), pnote(108, 1.2, 0.4, 'R', 5)];
+    const program = buildChoreoProgram(makeScore(notes));
+    for (let t = 0; t < program.duration; t += 0.05) {
+      const g = program.sample(t).head.gazeX;
+      expect(Number.isFinite(g)).toBe(true);
+      expect(g).toBeGreaterThanOrEqual(-100);
+      expect(g).toBeLessThanOrEqual(1322);
+    }
+  });
+});
+
 describe('detectPhrases', () => {
   it('splits phrases on onset gaps of at least 0.9s', () => {
     seq = 0;

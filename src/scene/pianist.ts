@@ -76,6 +76,8 @@ export interface PianistRig {
   setHandsOnly(v: boolean): void;
   /** swap procedural hands for the realistic WebXR skinned hands */
   attachXRHands(scenes: { left: THREE.Group; right: THREE.Group }): void;
+  /** world-space eye position/orientation of the animated head (for the head-cam) */
+  getEyePose(outPos: THREE.Vector3, outQuat: THREE.Quaternion): void;
   dispose(): void;
 }
 
@@ -672,7 +674,7 @@ export function createPianist(characterId: CharacterId = 'nocturne'): PianistRig
       R: neutralHand('R'),
     },
     body: { leanX: 0, leanZ: 0.02, sway: 0, breath: 0 },
-    head: { yaw: 0, pitch: -0.1, lift: 0 },
+    head: { yaw: 0, pitch: -0.1, lift: 0, gazeX: 611 },
     pedal: 0,
     keys: new Float32Array(88),
   });
@@ -694,6 +696,13 @@ export function createPianist(characterId: CharacterId = 'nocturne'): PianistRig
         leg.knee.visible = !v;
         leg.foot.visible = !v;
       }
+    },
+    getEyePose(outPos: THREE.Vector3, outQuat: THREE.Quaternion) {
+      head.getWorldQuaternion(outQuat);
+      outPos.set(0, 0.055, -0.075).applyQuaternion(outQuat);
+      const hw = new THREE.Vector3();
+      head.getWorldPosition(hw);
+      outPos.add(hw);
     },
     attachXRHands(scenes) {
       const tint = new THREE.Color(spec.face ? spec.skinColor : 0x17161c);

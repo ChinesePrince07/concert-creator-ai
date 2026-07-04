@@ -46,7 +46,13 @@ export interface HandPose {
 export interface PoseFrame {
   hands: Record<Hand, HandPose>;
   body: { leanX: number; leanZ: number; sway: number; breath: number };
-  head: { yaw: number; pitch: number; lift: number };
+  head: {
+    yaw: number;
+    pitch: number;
+    lift: number;
+    /** where the eyes are looking along the keyboard (mm) — anticipates upcoming entries */
+    gazeX: number;
+  };
   pedal: number;
   /** per-key dip 0..1, index = keyIndex(midi) */
   keys: Float32Array;
@@ -225,11 +231,29 @@ export function buildChoreoProgram(score: PerformanceScore): ChoreoProgram {
         chans[2][s] = st.p[2];
       }
 
-      const targetActiveX =
+      // gaze: watch the working hand, but glance ahead to upcoming entries —
+      // the closer the next strike, the harder the eyes lock onto its key
+      const currentX =
         lastOnsetHand && t - lastOnsetAt < 0.5
           ? (lastOnsetHand === 'L' ? state.L.p[0] : state.R.p[0])
           : (state.L.p[0] + state.R.p[0]) / 2;
-      activeX += kActive * (targetActiveX - activeX);
+      let gazeTarget = currentX;
+      const GAZE_AHEAD = 1.0;
+      let wSum = 0;
+      let xSum = 0;
+      let nextStart = Number.POSITIVE_INFINITY;
+      for (let j = onsetCursor; j < onsets.length && onsets[j].start <= t + GAZE_AHEAD; j++) {
+        const w = 1 / (0.15 + (onsets[j].start - t));
+        wSum += w;
+        xSum += w * keyCenterX(onsets[j].midi);
+        if (onsets[j].start < nextStart) nextStart = onsets[j].start;
+      }
+      if (wSum > 0) {
+        const upX = xSum / wSum;
+        const imminence = Math.min(1, Math.max(0, 1 - (nextStart - t) / GAZE_AHEAD));
+        gazeTarget = lerp(currentX, upX, 0.35 + 0.55 * imminence);
+      }
+      activeX += kActive * (gazeTarget - activeX);
 
       ch.eFast[s] = eFast;
       ch.eSlow[s] = eSlow;
@@ -425,6 +449,7 @@ export function buildChoreoProgram(score: PerformanceScore): ChoreoProgram {
         yaw: Math.min(1, Math.max(-1, (activeX - centroid) / 500)) * 0.45,
         pitch: -0.1 - 0.1 * eNorm + lift * 0.3,
         lift,
+        gazeX: activeX,
       },
       pedal: pedalAt(t),
       keys,

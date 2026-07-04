@@ -8,6 +8,10 @@ export interface CameraContext {
   activeCenter: THREE.Vector3;
   /** overall performance energy 0..1 */
   energy: number;
+  /** the avatar's animated eye pose — when present, first-person rides the head */
+  eye?: { pos: THREE.Vector3; up: THREE.Vector3 };
+  /** world-space point the AI gaze is looking at (anticipates upcoming notes) */
+  gazePoint?: THREE.Vector3;
 }
 
 export interface CameraState {
@@ -15,6 +19,8 @@ export interface CameraState {
   target: THREE.Vector3;
   fov: number;
   focus: number;
+  /** camera roll reference; undefined = world up */
+  up?: THREE.Vector3;
 }
 
 function seededPhases(seed: number): number[] {
@@ -86,9 +92,16 @@ export function evaluateShot(shot: Shot, t: number, ctx: CameraContext, state: C
         break;
       }
       case 'FIRST_PERSON': {
-        state.pos.set(0.02, 1.44, 0.8);
-        state.target.set(ax * 0.75, 0.74, -0.02);
-        state.fov = 46;
+        if (ctx.eye && ctx.gazePoint) {
+          state.pos.copy(ctx.eye.pos);
+          state.target.copy(ctx.gazePoint);
+          state.up = ctx.eye.up;
+          state.fov = 50;
+        } else {
+          state.pos.set(0.02, 1.44, 0.8);
+          state.target.set(ax * 0.75, 0.74, -0.02);
+          state.fov = 46;
+        }
         break;
       }
       case 'ORBIT': {
@@ -119,6 +132,7 @@ export function evaluateCamera(
   ctx: CameraContext,
   state: CameraState,
 ): void {
+  state.up = undefined;
   if (mode === 'AUTO') {
     const shots = plan?.shots ?? [];
     let shot: Shot = FALLBACK_SHOT;
@@ -149,10 +163,17 @@ export function evaluateCamera(
       break;
     }
     case 'FP': {
-      // through the pianist's own eyes
-      state.pos.set(0.01, 1.53, 0.5);
-      state.target.set(ax * 0.35, 0.8, -0.28);
-      state.fov = 58;
+      // through the pianist's own eyes — the camera IS the animated head
+      if (ctx.eye && ctx.gazePoint) {
+        state.pos.copy(ctx.eye.pos);
+        state.target.copy(ctx.gazePoint);
+        state.up = ctx.eye.up;
+        state.fov = 56;
+      } else {
+        state.pos.set(0.01, 1.53, 0.5);
+        state.target.set(ax * 0.35, 0.8, -0.28);
+        state.fov = 58;
+      }
       state.focus = state.pos.distanceTo(state.target);
       break;
     }
