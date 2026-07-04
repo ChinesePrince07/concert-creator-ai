@@ -8,8 +8,10 @@ import type { Hand, PerformanceScore } from '../core/types';
 import { type CameraMode, type CameraState, evaluateCamera } from './cameras';
 import { createKeyboard } from './keys';
 import { createPiano, type PianoModelId } from './piano';
+import { type CharacterId } from './pianist';
 
 export { PIANO_MODELS, type PianoModelId } from './piano';
+export { CHARACTERS, type CharacterId } from './pianist';
 import { createPianist } from './pianist';
 import { type PostChain, createPost } from './post';
 import { createRoll } from './roll';
@@ -24,6 +26,7 @@ export interface VisualSettings {
   lightMood: 'noir' | 'warm' | 'blue';
   rollZoom: number;
   pianoModel: PianoModelId;
+  character: CharacterId;
 }
 
 export const DEFAULT_VISUALS: VisualSettings = {
@@ -34,6 +37,7 @@ export const DEFAULT_VISUALS: VisualSettings = {
   lightMood: 'noir',
   rollZoom: 1,
   pianoModel: 'steinway',
+  character: 'elena',
 };
 
 export interface ConcertScene {
@@ -121,7 +125,7 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
   const rig = new THREE.Group();
   scene.add(rig);
 
-  const key = new THREE.SpotLight(0xffdcae, 85, 0, 0.52, 0.5, 1.9);
+  const key = new THREE.SpotLight(0xffdcae, 70, 0, 0.52, 0.5, 1.9);
   key.position.set(2.7, 4.3, 2.3);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
@@ -135,7 +139,7 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
   rim.target.position.set(0, 0.9, 0.3);
   rig.add(rim, rim.target);
 
-  const keysAccent = new THREE.SpotLight(0xffe6c0, 1.1, 0, 0.3, 0.65, 1.8);
+  const keysAccent = new THREE.SpotLight(0xffe6c0, 0.8, 0, 0.3, 0.65, 1.8);
   keysAccent.position.set(0.4, 2.8, 1.6);
   keysAccent.castShadow = true;
   keysAccent.shadow.mapSize.set(1024, 1024);
@@ -239,7 +243,8 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
   let piano = createPiano(DEFAULT_VISUALS.pianoModel);
   let pianoModel: PianoModelId = DEFAULT_VISUALS.pianoModel;
   scene.add(piano.group);
-  const pianist = createPianist();
+  let pianist = createPianist(DEFAULT_VISUALS.character);
+  let character: CharacterId = DEFAULT_VISUALS.character;
   scene.add(pianist.group);
   const roll = createRoll();
   scene.add(roll.group);
@@ -286,7 +291,7 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
       (rollOn ? 0.4 : 0) +
       (visuals.lightMood === 'warm' ? 0.55 : visuals.lightMood === 'blue' ? 0.38 : 0.45);
     // the interior is the tile canvas in TOP view — keep the spot off it
-    const moodKey = visuals.lightMood === 'warm' ? 140 : visuals.lightMood === 'blue' ? 90 : 85;
+    const moodKey = visuals.lightMood === 'warm' ? 115 : visuals.lightMood === 'blue' ? 75 : 70;
     key.intensity = rollOn && mode === 'TOP' ? moodKey * 0.4 : moodKey;
   }
 
@@ -416,6 +421,13 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
         piano = createPiano(visuals.pianoModel);
         scene.add(piano.group);
         pianoModel = visuals.pianoModel;
+      }
+      if (visuals.character !== character) {
+        scene.remove(pianist.group);
+        pianist.dispose();
+        pianist = createPianist(visuals.character);
+        scene.add(pianist.group);
+        character = visuals.character;
       }
       applyMood();
       applyModeVisibility();

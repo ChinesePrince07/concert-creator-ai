@@ -251,6 +251,18 @@ button:disabled { opacity: 0.35; pointer-events: none; }
 .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .row + .row { margin-top: 10px; }
 .row span { color: var(--ink-dim); font-size: 11px; }
+.char-card {
+  display: block; width: 100%; text-align: left;
+  border: 1px solid var(--line); border-bottom: none;
+  padding: 10px 12px;
+}
+.char-card:last-of-type { border-bottom: 1px solid var(--line); }
+.char-card .cn { display: block; font-family: var(--serif); font-style: italic; font-size: 15px; }
+.char-card .cb { display: block; font-size: 9px; letter-spacing: 0.14em; color: var(--ink-faint); text-transform: uppercase; margin-top: 2px; }
+.char-card.on { border-color: var(--gold); background: var(--gold-dim); }
+.char-card.on + .char-card { border-top-color: var(--gold); }
+.char-card.on .cn { color: var(--gold-bright); }
+
 .swatches { display: flex; gap: 8px; }
 .swatch { width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; padding: 0; }
 .swatch.on { border-color: var(--ink); }

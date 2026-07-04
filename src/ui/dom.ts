@@ -43,6 +43,7 @@ export function svgIcon(path: string, viewBox = '0 0 24 24'): SVGElement {
 
 export const ICONS = {
   camera: 'M3 8h3l2-3h8l2 3h3v11H3zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z',
+  pianist: 'M12 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5',
   visuals: 'M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
   animation: 'M4 17V7l6 5-6 5zM13 7h7M13 12h7M13 17h7',
   render: 'M5 4h14v16H5zM5 8h14M8 4v4M16 4v4M9 13l3 2.5L9 18v-5z',

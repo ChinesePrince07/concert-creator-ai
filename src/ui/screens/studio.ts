@@ -1,7 +1,7 @@
 import { MIDI_MIN } from '../../core/keyboard';
 import type { PerformanceNote } from '../../core/types';
 import type { CameraMode } from '../../scene/cameras';
-import { createConcertScene, PIANO_MODELS, type ConcertScene } from '../../scene/stage';
+import { CHARACTERS, createConcertScene, PIANO_MODELS, type ConcertScene } from '../../scene/stage';
 import { applyEdit, backToLibrary } from '../../state/actions';
 import { store, type AppState, type ProjectState } from '../../state/store';
 import { PlaybackEngine } from '../audio';
@@ -41,7 +41,7 @@ export function studioScreen(initial: AppState): {
   let t = 0;
   let rafId = 0;
   let lastNow = performance.now();
-  let openPanel: 'camera' | 'visuals' | null = null;
+  let openPanel: 'camera' | 'visuals' | 'pianist' | null = null;
   let editMode = false;
   let selectedId: string | null = null;
   let exporting = false;
@@ -76,6 +76,7 @@ export function studioScreen(initial: AppState): {
 
   const railButtons: Record<string, HTMLButtonElement> = {
     camera: railBtn('camera', 'CAMERA'),
+    pianist: railBtn('pianist', 'PIANIST'),
     visuals: railBtn('visuals', 'VISUALS'),
     animation: railBtn('animation', 'ANIMATE'),
     render: railBtn('render', 'RENDER'),
@@ -215,6 +216,7 @@ export function studioScreen(initial: AppState): {
 
   // ---------- rail / panels ----------
   railButtons.camera.onclick = () => setPanel(openPanel === 'camera' ? null : 'camera');
+  railButtons.pianist.onclick = () => setPanel(openPanel === 'pianist' ? null : 'pianist');
   railButtons.visuals.onclick = () => setPanel(openPanel === 'visuals' ? null : 'visuals');
   railButtons.animation.onclick = () => toggleEdit();
   railButtons.render.onclick = () => {
@@ -237,10 +239,37 @@ export function studioScreen(initial: AppState): {
   function setPanel(p: typeof openPanel): void {
     openPanel = p;
     railButtons.camera.classList.toggle('on', p === 'camera');
+    railButtons.pianist.classList.toggle('on', p === 'pianist');
     railButtons.visuals.classList.toggle('on', p === 'visuals');
     panelHost.innerHTML = '';
     if (p === 'camera') panelHost.append(cameraPanel());
+    if (p === 'pianist') panelHost.append(pianistPanel());
     if (p === 'visuals') panelHost.append(visualsPanel());
+  }
+
+  function pianistPanel(): HTMLElement {
+    const list = el('div', {});
+    const current = store.get().visuals.character;
+    for (const c of CHARACTERS) {
+      const b = el(
+        'button',
+        { class: `char-card ${c.id === current ? 'on' : ''}` },
+        [
+          el('span', { class: 'cn', text: c.name }),
+          el('span', { class: 'cb', text: c.blurb }),
+        ],
+      );
+      b.onclick = () => {
+        setVisuals({ character: c.id });
+        list.querySelectorAll('button').forEach((x) => x.classList.remove('on'));
+        b.classList.add('on');
+      };
+      list.append(b);
+    }
+    return el('div', { class: 'panel' }, [
+      el('h3', { text: 'Pianist' }),
+      el('div', { class: 'group' }, [el('label', { text: 'Character' }), list]),
+    ]);
   }
 
   function cameraPanel(): HTMLElement {

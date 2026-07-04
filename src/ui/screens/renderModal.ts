@@ -155,7 +155,7 @@ export function openRenderModal(opts: {
     const startedAt = performance.now();
     opts.onExportingChange(true);
     scene.setQuality('export');
-    scene.setCameraMode('AUTO');
+    // export whatever view is active — Cinema, Synthesia Top View, First Person…
     scene.resize(res.w, res.h, 1);
     renderProgress(0, Math.ceil(project.perf.score.duration * fps), startedAt);
     try {

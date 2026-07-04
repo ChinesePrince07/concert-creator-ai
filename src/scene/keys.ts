@@ -30,10 +30,10 @@ export function createKeyboard(): KeyboardRig {
   const group = new THREE.Group();
 
   const whiteMat = new THREE.MeshPhysicalMaterial({
-    color: 0xe6dfcf,
-    roughness: 0.38,
-    clearcoat: 0.32,
-    clearcoatRoughness: 0.35,
+    color: 0xd8d0bc,
+    roughness: 0.42,
+    clearcoat: 0.28,
+    clearcoatRoughness: 0.38,
   });
   const blackMat = new THREE.MeshPhysicalMaterial({
     color: 0x0b0b0d,
@@ -57,7 +57,7 @@ export function createKeyboard(): KeyboardRig {
   blackMesh.castShadow = blackMesh.receiveShadow = true;
   group.add(whiteMesh, blackMesh);
 
-  const baseWhite = new THREE.Color(0xe6dfcf);
+  const baseWhite = new THREE.Color(0xd8d0bc);
   const baseBlack = new THREE.Color(0x0b0b0d);
   for (let i = 0; i < whites.length; i++) whiteMesh.setColorAt(i, baseWhite);
   for (let i = 0; i < blacks.length; i++) blackMesh.setColorAt(i, baseBlack);

@@ -11,30 +11,67 @@ import { kbToWorld } from './mapping';
  * by fingertip targets.
  */
 
+export type CharacterId = 'nocturne' | 'elena' | 'marcus' | 'yuki' | 'august';
+
+export interface CharacterSpec {
+  id: CharacterId;
+  name: string;
+  blurb: string;
+  skinColor: number;
+  skinRoughness: number;
+  skinClearcoat: number;
+  outfitColor: number;
+  outfitRoughness: number;
+  accentColor: number;
+  hair: 'none' | 'bun' | 'short' | 'long' | 'swept';
+  hairColor: number;
+  gown: boolean;
+  /** visual bulk multiplier (radii only — skeleton stays identical) */
+  build: number;
+  face: boolean;
+}
+
+export const CHARACTERS: CharacterSpec[] = [
+  {
+    id: 'elena', name: 'Elena', blurb: 'Concert gown, dark bun',
+    skinColor: 0xd9a586, skinRoughness: 0.55, skinClearcoat: 0.12,
+    outfitColor: 0x11302a, outfitRoughness: 0.72, accentColor: 0x0c221d,
+    hair: 'bun', hairColor: 0x241610, gown: true, build: 0.94, face: true,
+  },
+  {
+    id: 'marcus', name: 'Marcus', blurb: 'Classic tailcoat',
+    skinColor: 0x6b442c, skinRoughness: 0.58, skinClearcoat: 0.1,
+    outfitColor: 0x0d0d11, outfitRoughness: 0.55, accentColor: 0xe6e1d4,
+    hair: 'short', hairColor: 0x0e0a08, gown: false, build: 1.06, face: true,
+  },
+  {
+    id: 'yuki', name: 'Yuki', blurb: 'Ivory blouse, long hair',
+    skinColor: 0xeccdb0, skinRoughness: 0.52, skinClearcoat: 0.14,
+    outfitColor: 0xcfc7b6, outfitRoughness: 0.68, accentColor: 0x24242a,
+    hair: 'long', hairColor: 0x15100e, gown: false, build: 0.92, face: true,
+  },
+  {
+    id: 'august', name: 'August', blurb: 'Charcoal turtleneck, silver hair',
+    skinColor: 0xc39b7d, skinRoughness: 0.56, skinClearcoat: 0.1,
+    outfitColor: 0x26262c, outfitRoughness: 0.8, accentColor: 0x1a1a1f,
+    hair: 'swept', hairColor: 0xb4b8bf, gown: false, build: 1.02, face: true,
+  },
+  {
+    id: 'nocturne', name: 'Nocturne', blurb: 'The obsidian sculpture',
+    skinColor: 0x131217, skinRoughness: 0.42, skinClearcoat: 0.4,
+    outfitColor: 0x101013, outfitRoughness: 0.52, accentColor: 0x131217,
+    hair: 'none', hairColor: 0x000000, gown: false, build: 1.0, face: false,
+  },
+];
+
 export interface PianistRig {
   group: THREE.Group;
   apply(frame: PoseFrame): void;
   setVisible(v: boolean): void;
   /** hide head + neck for first-person view */
   setHeadVisible(v: boolean): void;
+  dispose(): void;
 }
-
-const BODY_MAT = () =>
-  new THREE.MeshPhysicalMaterial({
-    color: 0x101013,
-    roughness: 0.52,
-    metalness: 0.06,
-    clearcoat: 0.35,
-    clearcoatRoughness: 0.45,
-  });
-const SKIN_MAT = () =>
-  new THREE.MeshPhysicalMaterial({
-    color: 0x131217,
-    roughness: 0.42,
-    metalness: 0.04,
-    clearcoat: 0.4,
-    clearcoatRoughness: 0.35,
-  });
 
 const UPPER_ARM = 0.285;
 const FOREARM = 0.26;
@@ -72,9 +109,36 @@ function joint(r: number, mat: THREE.Material): THREE.Mesh {
   return m;
 }
 
-export function createPianist(): PianistRig {
-  const body = BODY_MAT();
-  const skin = SKIN_MAT();
+export function createPianist(characterId: CharacterId = 'nocturne'): PianistRig {
+  const spec = CHARACTERS.find((c) => c.id === characterId) ?? CHARACTERS[CHARACTERS.length - 1];
+  const body = new THREE.MeshPhysicalMaterial({
+    color: spec.outfitColor,
+    roughness: spec.outfitRoughness,
+    metalness: 0.04,
+    clearcoat: spec.id === 'nocturne' ? 0.35 : 0.08,
+    clearcoatRoughness: 0.45,
+  });
+  const skin = new THREE.MeshPhysicalMaterial({
+    color: spec.skinColor,
+    roughness: spec.skinRoughness,
+    metalness: spec.id === 'nocturne' ? 0.04 : 0.0,
+    clearcoat: spec.skinClearcoat,
+    clearcoatRoughness: 0.5,
+  });
+  const accent = new THREE.MeshPhysicalMaterial({
+    color: spec.accentColor,
+    roughness: 0.6,
+    metalness: 0.02,
+  });
+  const hairMat = new THREE.MeshPhysicalMaterial({
+    color: spec.hairColor,
+    roughness: 0.72,
+    metalness: 0.05,
+    clearcoat: 0.2,
+    clearcoatRoughness: 0.6,
+  });
+  const shoe = new THREE.MeshPhysicalMaterial({ color: 0x0b0b0d, roughness: 0.35, clearcoat: 0.6 });
+  const bulk = spec.build;
   const group = new THREE.Group();
 
   // ---- torso chain --------------------------------------------------------
@@ -83,15 +147,29 @@ export function createPianist(): PianistRig {
   group.add(root);
 
   const hipsMesh = new THREE.Mesh(new THREE.SphereGeometry(0.145, 20, 16), body);
-  hipsMesh.scale.set(1.02, 0.6, 0.78);
+  hipsMesh.scale.set(1.02 * bulk, 0.6, 0.78);
   hipsMesh.castShadow = true;
   root.add(hipsMesh);
 
-  // coat tail hint
-  const tail = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.05, 0.2), body);
-  tail.position.set(0, -0.055, 0.1);
-  tail.rotation.x = 0.25;
-  root.add(tail);
+  if (spec.gown) {
+    // skirt draping over the bench
+    const skirtProfile: THREE.Vector2[] = [
+      new THREE.Vector2(0.14, 0.02),
+      new THREE.Vector2(0.19, -0.04),
+      new THREE.Vector2(0.24, -0.1),
+      new THREE.Vector2(0.27, -0.14),
+    ];
+    const skirt = new THREE.Mesh(new THREE.LatheGeometry(skirtProfile, 28), body);
+    skirt.scale.set(1, 1, 0.8);
+    skirt.castShadow = true;
+    root.add(skirt);
+  } else {
+    // coat tail hint
+    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.05, 0.2), body);
+    tail.position.set(0, -0.055, 0.1);
+    tail.rotation.x = 0.25;
+    root.add(tail);
+  }
 
   const spine1 = new THREE.Group();
   spine1.position.set(0, 0.075, 0);
@@ -112,9 +190,17 @@ export function createPianist(): PianistRig {
     new THREE.Vector2(0.001, 0.465),
   ];
   const coat = new THREE.Mesh(new THREE.LatheGeometry(coatProfile, 26), body);
-  coat.scale.set(1, 1, 0.7);
+  coat.scale.set(bulk, 1, 0.7);
   coat.castShadow = true;
   spine1.add(coat);
+
+  if (spec.id === 'marcus') {
+    // slim shirt-front strip under the tailcoat
+    const shirt = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.17, 0.02), accent);
+    shirt.position.set(0, 0.33, -0.1);
+    shirt.rotation.x = 0.12;
+    spine1.add(shirt);
+  }
 
   const spine1Mesh = new THREE.Mesh(new THREE.SphereGeometry(0.118, 20, 16), body);
   spine1Mesh.scale.set(0.98, 0.92, 0.62);
@@ -135,7 +221,7 @@ export function createPianist(): PianistRig {
   chest.position.set(0, 0.125, 0);
   spine2.add(chest);
   const chestMesh = new THREE.Mesh(new THREE.SphereGeometry(0.135, 22, 18), body);
-  chestMesh.scale.set(1.22, 1.0, 0.66);
+  chestMesh.scale.set(1.22 * bulk, 1.0, 0.66);
   chestMesh.position.y = 0.05;
   chestMesh.castShadow = true;
   chest.add(chestMesh);
@@ -147,7 +233,7 @@ export function createPianist(): PianistRig {
   neckMesh.position.y = 0.03;
   neckMesh.castShadow = true;
   neck.add(neckMesh);
-  const collar = new THREE.Mesh(new THREE.TorusGeometry(0.065, 0.014, 10, 24), body);
+  const collar = new THREE.Mesh(new THREE.TorusGeometry(0.065, 0.014, 10, 24), accent);
   collar.rotation.x = Math.PI / 2;
   collar.position.y = 0.005;
   neck.add(collar);
@@ -165,27 +251,80 @@ export function createPianist(): PianistRig {
   jaw.position.set(0, 0.015, -0.014);
   head.add(jaw);
 
+  if (spec.face) {
+    // restrained facial hints — mannequin-smooth, no uncanny detail
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.012, 10, 8), skin);
+    nose.scale.set(0.7, 1.0, 0.9);
+    nose.position.set(0, 0.055, -0.088);
+    head.add(nose);
+    const eyeMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(spec.skinColor).multiplyScalar(0.42),
+      roughness: 0.85,
+    });
+    for (const ex of [-0.031, 0.031]) {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.011, 10, 8), eyeMat);
+      eye.scale.set(1.15, 0.55, 0.5);
+      eye.position.set(ex, 0.082, -0.082);
+      head.add(eye);
+    }
+    for (const ex of [-0.085, 0.085]) {
+      const ear = new THREE.Mesh(new THREE.SphereGeometry(0.016, 10, 8), skin);
+      ear.scale.set(0.45, 0.8, 0.6);
+      ear.position.set(ex, 0.06, 0.005);
+      head.add(ear);
+    }
+  }
+
+  if (spec.hair !== 'none') {
+    // hood shell over the top/back of the skull, leaving the face open
+    const hood = new THREE.Mesh(
+      new THREE.SphereGeometry(0.099, 26, 18, 0, Math.PI * 2, 0, Math.PI * 0.52),
+      hairMat,
+    );
+    hood.scale.set(0.95, 1.08, 1.04);
+    hood.position.set(0, 0.082, 0.008);
+    hood.rotation.x = 0.5; // sweep back off the brow
+    hood.castShadow = true;
+    head.add(hood);
+    if (spec.hair === 'bun') {
+      const bun = new THREE.Mesh(new THREE.SphereGeometry(0.037, 14, 12), hairMat);
+      bun.position.set(0, 0.11, 0.085);
+      head.add(bun);
+    } else if (spec.hair === 'long') {
+      const fallHair = new THREE.Mesh(new THREE.CapsuleGeometry(0.052, 0.2, 6, 14), hairMat);
+      fallHair.scale.set(1.25, 1, 0.55);
+      fallHair.position.set(0, -0.07, 0.075);
+      fallHair.rotation.x = 0.12;
+      head.add(fallHair);
+    } else if (spec.hair === 'swept') {
+      const crest = new THREE.Mesh(new THREE.SphereGeometry(0.05, 14, 10), hairMat);
+      crest.scale.set(1.5, 0.55, 1.35);
+      crest.position.set(0, 0.148, 0.012);
+      head.add(crest);
+    }
+  }
+
   // ---- arms ---------------------------------------------------------------
   function buildArm(handKey: Hand): ArmRig {
     const side = handKey === 'L' ? -1 : 1; // world x sign of the shoulder
     const clav = new THREE.Group();
     clav.position.set(side * 0.168, 0.125, -0.005);
     chest.add(clav);
-    const shoulderBall = joint(0.054, body);
+    const shoulderBall = joint(0.054 * bulk, body);
     clav.add(shoulderBall);
 
     const shoulder = new THREE.Group();
     clav.add(shoulder);
-    shoulder.add(capsule(0.047, UPPER_ARM, body, 1, 1));
+    shoulder.add(capsule(0.047 * bulk, UPPER_ARM, body, 1, 1));
 
     const elbow = new THREE.Group();
     group.add(elbow); // world-space driven
-    elbow.add(capsule(0.038, FOREARM, body));
-    const elbowBall = joint(0.045, body);
+    elbow.add(capsule(0.038 * bulk, FOREARM, body));
+    const elbowBall = joint(0.045 * bulk, body);
     elbow.add(elbowBall);
 
     // cuff
-    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.0395, 0.041, 0.02, 14), skin);
+    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.0395 * bulk, 0.041 * bulk, 0.02, 14), accent);
     cuff.position.y = -FOREARM + 0.025;
     elbow.add(cuff);
 
@@ -262,12 +401,12 @@ export function createPianist(): PianistRig {
     const hip = new THREE.Group();
     root.add(hip);
     hip.position.set(sx * 0.095, -0.02, 0.02);
-    hip.add(capsule(0.062, THIGH, body));
+    hip.add(capsule(0.062 * bulk, THIGH, body));
     const knee = new THREE.Group();
     group.add(knee);
-    knee.add(capsule(0.048, SHIN, body));
-    knee.add(joint(0.055, body));
-    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.05, 0.24), skin);
+    knee.add(capsule(0.048 * bulk, SHIN, body));
+    knee.add(joint(0.055 * bulk, body));
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.05, 0.24), shoe);
     foot.castShadow = true;
     group.add(foot);
     return {
@@ -428,6 +567,15 @@ export function createPianist(): PianistRig {
     },
     setHeadVisible(v: boolean) {
       neck.visible = v;
+    },
+    dispose() {
+      group.traverse((obj) => {
+        if (obj instanceof THREE.Mesh) {
+          obj.geometry.dispose();
+          const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+          for (const m of mats) m.dispose();
+        }
+      });
     },
   };
 }
