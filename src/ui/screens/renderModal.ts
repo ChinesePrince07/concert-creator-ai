@@ -234,6 +234,7 @@ export function openRenderModal(opts: {
         height: res.h,
         fps,
         supersample: quality === 'cinema' ? 2 : 1,
+        motionBlurSamples: quality === 'cinema' ? 4 : 1,
         signal: controller.signal,
         onProgress: (frame, total) => renderProgress(frame, total, startedAt),
       });

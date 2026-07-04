@@ -72,15 +72,48 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.02;
+  renderer.toneMappingExposure = 1.0;
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x030303);
   scene.fog = new THREE.FogExp2(0x040404, 0.055);
 
+  // A concert hall is mostly darkness with a few big soft sources — that's
+  // exactly what black lacquer needs to reflect to read as lacquer, not plastic.
+  function studioEnvironment(): THREE.Scene {
+    const env = new THREE.Scene();
+    env.background = new THREE.Color(0x000000);
+    const panel = (
+      color: number,
+      intensity: number,
+      w: number,
+      h: number,
+      pos: [number, number, number],
+      lookAt: [number, number, number] = [0, 1, 0],
+    ) => {
+      const m = new THREE.Mesh(
+        new THREE.PlaneGeometry(w, h),
+        new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(intensity), side: THREE.DoubleSide }),
+      );
+      m.position.set(...pos);
+      m.lookAt(...lookAt);
+      env.add(m);
+    };
+    // big warm softbox high right (the "stage key")
+    panel(0xffd9a8, 14, 3.5, 2.2, [3.2, 4.5, 2.6]);
+    // long cool strip behind-left (rim)
+    panel(0x8fb0ff, 8, 5.0, 0.8, [-3.6, 3.6, -2.8]);
+    // thin bright white streak overhead — the classic lacquer highlight
+    panel(0xffffff, 9, 4.5, 0.22, [0.4, 5.2, -0.4]);
+    // faint warm floor bounce
+    panel(0x554433, 2.2, 6, 6, [0, -2.5, 0]);
+    // dim audience-side fill so front-facing gloss isn't a void
+    panel(0x2a2c36, 3, 4, 2.4, [0.5, 2.2, 5.5]);
+    return env;
+  }
   const pmrem = new THREE.PMREMGenerator(renderer);
-  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  scene.environmentIntensity = 0.22;
+  scene.environment = pmrem.fromScene(studioEnvironment(), 0.06).texture;
+  scene.environmentIntensity = 0.34;
 
   const camera = new THREE.PerspectiveCamera(40, 16 / 9, 0.05, 60);
   camera.position.set(0, 1.6, -4);
@@ -138,7 +171,7 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
   key.target.position.set(-0.2, 0.85, -0.55);
   rig.add(key, key.target);
 
-  const rim = new THREE.SpotLight(0x8fb0ff, 65, 0, 0.6, 0.55, 1.9);
+  const rim = new THREE.SpotLight(0x8fb0ff, 26, 0, 0.8, 0.85, 1.9);
   rim.position.set(-3.4, 3.4, -2.5);
   rim.target.position.set(0, 0.9, 0.3);
   rig.add(rim, rim.target);
@@ -353,7 +386,7 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
         key.color.set(0xffdcae);
         key.intensity = 85;
         rim.color.set(0x8fb0ff);
-        rim.intensity = 65;
+        rim.intensity = 26;
         hemi.intensity = 0.45;
         scene.environmentIntensity = 0.22;
         break;
@@ -361,7 +394,7 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
         key.color.set(0xffc98c);
         key.intensity = 140;
         rim.color.set(0xffa574);
-        rim.intensity = 45;
+        rim.intensity = 22;
         hemi.intensity = 0.55;
         scene.environmentIntensity = 0.3;
         break;
@@ -369,7 +402,7 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
         key.color.set(0xbfd4ff);
         key.intensity = 90;
         rim.color.set(0x4f6fff);
-        rim.intensity = 80;
+        rim.intensity = 34;
         hemi.intensity = 0.38;
         scene.environmentIntensity = 0.18;
         break;

@@ -14,6 +14,8 @@ export interface ExportOptions {
   fps: number;
   /** render at N× resolution and downscale before encoding (Cinema quality) */
   supersample?: number;
+  /** sub-frame samples averaged per frame — 180° shutter motion blur (Cinema) */
+  motionBlurSamples?: number;
   onProgress(frame: number, totalFrames: number): void;
   signal: AbortSignal;
 }
@@ -31,13 +33,14 @@ export interface ExportResult {
 export async function exportVideo(opts: ExportOptions): Promise<ExportResult> {
   const { scene, duration, pcm, width, height, fps, onProgress, signal } = opts;
   const ss = Math.max(1, Math.min(2, opts.supersample ?? 1));
+  const blur = Math.max(1, Math.min(8, opts.motionBlurSamples ?? 1));
   const plan = await pickCodecs(width, height, fps);
   const totalFrames = Math.ceil(duration * fps);
 
-  // supersampled frames are downscaled onto this canvas before encoding
+  // supersampled / blur-accumulated frames land on this canvas before encoding
   let frameSource: HTMLCanvasElement | OffscreenCanvas = scene.canvas;
   let downscale: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null = null;
-  if (ss > 1) {
+  if (ss > 1 || blur > 1) {
     const ds =
       typeof OffscreenCanvas !== 'undefined'
         ? new OffscreenCanvas(width, height)
@@ -141,8 +144,18 @@ export async function exportVideo(opts: ExportOptions): Promise<ExportResult> {
     if (encoderError) throw encoderError;
 
     const t = frame / fps;
-    scene.renderAt(Math.min(t, duration - 1e-4), 1 / fps);
-    if (downscale) downscale.drawImage(scene.canvas, 0, 0, width, height);
+    if (downscale) {
+      // 180° shutter: average sub-frame samples across half the frame interval
+      for (let s = 0; s < blur; s++) {
+        const ts = Math.min(t + (s / blur) * (0.5 / fps), duration - 1e-4);
+        scene.renderAt(ts, 1 / (fps * blur));
+        downscale.globalAlpha = 1 / (s + 1); // running average
+        downscale.drawImage(scene.canvas, 0, 0, width, height);
+      }
+      downscale.globalAlpha = 1;
+    } else {
+      scene.renderAt(Math.min(t, duration - 1e-4), 1 / fps);
+    }
     const vf = new VideoFrame(frameSource, {
       timestamp: frameTimestampUs(frame, fps),
       duration: durationUs,

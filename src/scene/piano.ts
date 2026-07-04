@@ -30,31 +30,31 @@ export interface PianoModelSpec {
 export const PIANO_MODELS: PianoModelSpec[] = [
   {
     id: 'steinway', name: 'Steinway & Sons D-274', blurb: 'Black polish, gold plate, red felt',
-    lengthScale: 1.0, widthScale: 1.0, finishColor: 0x060607, finishRoughness: 0.16,
+    lengthScale: 1.0, widthScale: 1.0, finishColor: 0x060607, finishRoughness: 0.07,
     plateColor: 0x574320, plateMetalness: 0.7, feltColor: 0x8c1626, soundboardColor: 0x120b05,
     hardwareColor: 0xb08d3f, hardwareMetalness: 1.0, hardwareRoughness: 0.32, stringColor: 0xd8d3c4, extraBassKeys: 0,
   },
   {
     id: 'yamaha', name: 'Yamaha CFX', blurb: 'Cleaner gloss, pale plate, green felt',
-    lengthScale: 0.98, widthScale: 1.0, finishColor: 0x050506, finishRoughness: 0.12,
+    lengthScale: 0.98, widthScale: 1.0, finishColor: 0x050506, finishRoughness: 0.055,
     plateColor: 0x6b5a2e, plateMetalness: 0.6, feltColor: 0x1f5c40, soundboardColor: 0x1a1008,
     hardwareColor: 0x9aa0a8, hardwareMetalness: 1.0, hardwareRoughness: 0.28, stringColor: 0xe2ddd0, extraBassKeys: 0,
   },
   {
     id: 'bosendorfer', name: 'Bösendorfer Imperial', blurb: 'Extra black bass keys, satin Viennese case',
-    lengthScale: 1.1, widthScale: 1.08, finishColor: 0x0a0a0c, finishRoughness: 0.3,
+    lengthScale: 1.1, widthScale: 1.08, finishColor: 0x0a0a0c, finishRoughness: 0.22,
     plateColor: 0x4a3a1c, plateMetalness: 0.65, feltColor: 0x701320, soundboardColor: 0x1c1209,
     hardwareColor: 0xa8843c, hardwareMetalness: 1.0, hardwareRoughness: 0.4, stringColor: 0xd0cbbd, extraBassKeys: 4,
   },
   {
     id: 'kawai', name: 'Shigeru Kawai SK-EX', blurb: 'Copper plate, signature blue accents',
-    lengthScale: 1.02, widthScale: 1.0, finishColor: 0x070708, finishRoughness: 0.18,
+    lengthScale: 1.02, widthScale: 1.0, finishColor: 0x070708, finishRoughness: 0.08,
     plateColor: 0x5a3d22, plateMetalness: 0.8, feltColor: 0x1e3a6e, soundboardColor: 0x160d06,
     hardwareColor: 0xb08d3f, hardwareMetalness: 1.0, hardwareRoughness: 0.32, stringColor: 0xd8d3c4, extraBassKeys: 0,
   },
   {
     id: 'fazioli', name: 'Fazioli F308', blurb: 'The longest grand — mirror gloss, chrome hardware',
-    lengthScale: 1.16, widthScale: 1.0, finishColor: 0x08080a, finishRoughness: 0.09,
+    lengthScale: 1.16, widthScale: 1.0, finishColor: 0x08080a, finishRoughness: 0.05,
     plateColor: 0x7d6a35, plateMetalness: 0.75, feltColor: 0x9c1c2c, soundboardColor: 0x241206,
     hardwareColor: 0xc8ccd2, hardwareMetalness: 1.0, hardwareRoughness: 0.14, stringColor: 0xe6e2d6, extraBassKeys: 0,
   },
@@ -100,7 +100,7 @@ export function createPiano(modelId: PianoModelId = 'steinway'): PianoRig {
     color: cfg.finishColor,
     roughness: cfg.finishRoughness,
     clearcoat: 1.0,
-    clearcoatRoughness: Math.max(0.05, cfg.finishRoughness * 0.5),
+    clearcoatRoughness: Math.max(0.03, cfg.finishRoughness * 0.4),
   });
   const gold = new THREE.MeshStandardMaterial({
     color: cfg.hardwareColor,

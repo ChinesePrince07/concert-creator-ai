@@ -14,7 +14,7 @@ const GrainVignetteShader = {
   uniforms: {
     tDiffuse: { value: null as THREE.Texture | null },
     time: { value: 0 },
-    grain: { value: 0.045 },
+    grain: { value: 0.032 },
     vignette: { value: 0.42 },
   },
   vertexShader: /* glsl */ `
@@ -34,10 +34,15 @@ const GrainVignetteShader = {
       return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
     }
     void main() {
+      // lens: slight chromatic aberration growing toward the frame edges
+      vec2 toC = vUv - 0.5;
+      float d = length(toC);
+      vec2 ca = toC * d * 0.006;
       vec4 c = texture2D(tDiffuse, vUv);
+      c.r = texture2D(tDiffuse, vUv - ca).r;
+      c.b = texture2D(tDiffuse, vUv + ca).b;
       float g = hash(vUv * vec2(1613.0, 941.0) + fract(time * 0.31) * 97.0) - 0.5;
       c.rgb += g * grain * (0.4 + 0.6 * c.rgb);
-      float d = distance(vUv, vec2(0.5));
       c.rgb *= 1.0 - vignette * smoothstep(0.32, 0.85, d);
       gl_FragColor = c;
     }
