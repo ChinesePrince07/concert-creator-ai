@@ -27,13 +27,11 @@ const BODY_MAT = () =>
   });
 const SKIN_MAT = () =>
   new THREE.MeshPhysicalMaterial({
-    color: 0x141317,
-    roughness: 0.3,
-    metalness: 0.05,
-    clearcoat: 0.75,
-    clearcoatRoughness: 0.22,
-    sheen: 0.4,
-    sheenColor: new THREE.Color(0x2a2a35),
+    color: 0x131217,
+    roughness: 0.42,
+    metalness: 0.04,
+    clearcoat: 0.4,
+    clearcoatRoughness: 0.35,
   });
 
 const UPPER_ARM = 0.285;
@@ -185,26 +183,26 @@ export function createPianist(): PianistRig {
     elbow.add(elbowBall);
 
     // cuff
-    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.043, 0.045, 0.03, 14), skin);
-    cuff.position.y = -FOREARM + 0.03;
+    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.0395, 0.041, 0.02, 14), skin);
+    cuff.position.y = -FOREARM + 0.025;
     elbow.add(cuff);
 
     const hand = new THREE.Group();
     group.add(hand); // world-space driven
-    const palm = new THREE.Mesh(new THREE.SphereGeometry(0.05, 18, 14), skin);
-    palm.scale.set(side === 1 ? 0.95 : 0.95, 0.42, 1.35);
-    palm.position.set(0, -0.008, -0.045);
+    const palm = new THREE.Mesh(new THREE.SphereGeometry(0.047, 18, 14), skin);
+    palm.scale.set(0.92, 0.36, 1.35);
+    palm.position.set(0, -0.006, -0.045);
     palm.castShadow = true;
     hand.add(palm);
 
     const fingers: FingerChain[] = [];
     const spread = [
       // [x offset, z offset, segment lengths]
-      { x: -0.041 * side, z: -0.028, l: [0.044, 0.03, 0.026] as [number, number, number], thumb: true },
-      { x: -0.0235 * side, z: -0.082, l: [0.046, 0.028, 0.022] as [number, number, number] },
-      { x: -0.008 * side, z: -0.086, l: [0.05, 0.031, 0.024] as [number, number, number] },
-      { x: 0.0085 * side, z: -0.082, l: [0.046, 0.029, 0.022] as [number, number, number] },
-      { x: 0.024 * side, z: -0.074, l: [0.037, 0.024, 0.02] as [number, number, number] },
+      { x: -0.04 * side, z: -0.028, l: [0.042, 0.028, 0.024] as [number, number, number], thumb: true },
+      { x: -0.023 * side, z: -0.08, l: [0.044, 0.027, 0.021] as [number, number, number] },
+      { x: -0.008 * side, z: -0.084, l: [0.048, 0.03, 0.023] as [number, number, number] },
+      { x: 0.008 * side, z: -0.08, l: [0.044, 0.028, 0.021] as [number, number, number] },
+      { x: 0.023 * side, z: -0.072, l: [0.035, 0.023, 0.019] as [number, number, number] },
     ];
     for (const s of spread) {
       const yawG = new THREE.Group();
@@ -216,19 +214,19 @@ export function createPianist(): PianistRig {
       }
       const mcp = new THREE.Group();
       yawG.add(mcp);
-      mcp.add(knuckle(0.011));
-      const b1 = boneZ(s.l[0], 0.0095);
+      mcp.add(knuckle(0.0092));
+      const b1 = boneZ(s.l[0], 0.008);
       mcp.add(b1);
       const pip = new THREE.Group();
       pip.position.z = -s.l[0];
       mcp.add(pip);
-      pip.add(knuckle(0.0095));
-      pip.add(boneZ(s.l[1], 0.0085));
+      pip.add(knuckle(0.0078));
+      pip.add(boneZ(s.l[1], 0.0071));
       const dip = new THREE.Group();
       dip.position.z = -s.l[1];
       pip.add(dip);
-      dip.add(knuckle(0.0085));
-      dip.add(boneZ(s.l[2], 0.0075, true));
+      dip.add(knuckle(0.0068));
+      dip.add(boneZ(s.l[2], 0.0062, true));
       fingers.push({ yaw: yawG, mcp, pip, dip, lengths: s.l });
     }
     return { shoulder, elbow, hand, fingers, side: side as 1 | -1 };
@@ -424,9 +422,9 @@ export function createPianist(): PianistRig {
 function neutralHand(hand: Hand) {
   const x = hand === 'L' ? 380 : 840;
   return {
-    wrist: { x, y: 46, z: 188 },
+    wrist: { x, y: 46, z: 238 },
     fingers: Array.from({ length: 5 }, (_, i) => ({
-      tip: { x: x + (hand === 'L' ? 1 : -1) * (32 - i * 15), y: 12, z: 124 },
+      tip: { x: x + (hand === 'L' ? 1 : -1) * (32 - i * 15), y: 12, z: 120 },
       press: 0,
       curl: 0.45,
       splay: 0,

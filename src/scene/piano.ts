@@ -23,19 +23,20 @@ const GOLD = () =>
 
 const LEN = 1.32; // depth stretch → ~2.2m concert length
 
-function rimShape(scale = 1): THREE.Shape {
+function rimShape(scale = 1, frontCut = 0): THREE.Shape {
   // plan coords: (x, d) with d = distance back from the case front
   const s = new THREE.Shape();
   const k = scale;
   const d = scale * LEN;
-  s.moveTo(-0.66 * k, 0);
-  s.lineTo(0.66 * k, 0);
+  const f = frontCut;
+  s.moveTo(-0.66 * k, f);
+  s.lineTo(0.66 * k, f);
   s.lineTo(0.66 * k, 0.45 * d);
   s.quadraticCurveTo(0.63 * k, 0.98 * d, 0.28 * k, 1.2 * d);
   s.quadraticCurveTo(0.05 * k, 1.34 * d, -0.12 * k, 1.52 * d);
   s.quadraticCurveTo(-0.38 * k, 1.68 * d, -0.56 * k, 1.5 * d);
   s.quadraticCurveTo(-0.66 * k, 1.38 * d, -0.66 * k, 1.1 * d);
-  s.lineTo(-0.66 * k, 0);
+  s.lineTo(-0.66 * k, f);
   return s;
 }
 
@@ -128,22 +129,32 @@ export function createPiano(): PianoRig {
 
   // lid, hinged along the bass (left) edge, propped open
   const lidGroup = new THREE.Group();
+  // main lid with the front flap folded back (front 30cm open, doubled strip)
+  const lidMat = new THREE.MeshPhysicalMaterial({
+    color: 0x070708,
+    roughness: 0.34,
+    clearcoat: 0.75,
+    clearcoatRoughness: 0.28,
+  });
   const lid = new THREE.Mesh(
-    new THREE.ExtrudeGeometry(rimShape(), { depth: 0.022, bevelEnabled: true, bevelSize: 0.008, bevelThickness: 0.006, bevelSegments: 2, curveSegments: 48 }),
-    black,
+    new THREE.ExtrudeGeometry(rimShape(1, 0.3), { depth: 0.022, bevelEnabled: true, bevelSize: 0.008, bevelThickness: 0.006, bevelSegments: 2, curveSegments: 48 }),
+    lidMat,
   );
   orientPlan(lid.geometry, CASE_FRONT_Z, 0);
   lid.geometry.translate(0.66, 0, 0); // hinge line to origin
   lid.castShadow = true;
+  const flap = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.02, 0.28), lidMat);
+  flap.position.set(0.66, 0.032, CASE_FRONT_Z - 0.45);
+  lidGroup.add(flap);
   lidGroup.position.set(-0.66, CASE_BASE_Y + CASE_H + 0.012, 0);
-  lidGroup.rotation.z = THREE.MathUtils.degToRad(27);
+  lidGroup.rotation.z = THREE.MathUtils.degToRad(42);
   lidGroup.add(lid);
   group.add(lidGroup);
 
   // lid prop
-  const prop = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.56), black.clone());
-  prop.position.set(0.5, 1.13, -0.98);
-  prop.rotation.z = THREE.MathUtils.degToRad(-20);
+  const prop = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.72), black.clone());
+  prop.position.set(0.5, 1.24, -0.95);
+  prop.rotation.z = THREE.MathUtils.degToRad(-16);
   group.add(prop);
 
   // keybed + cheeks + fallboard + felt

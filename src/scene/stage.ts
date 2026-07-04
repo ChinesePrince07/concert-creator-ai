@@ -60,7 +60,7 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.12;
+  renderer.toneMappingExposure = 1.02;
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x030303);
@@ -117,7 +117,7 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
   const rig = new THREE.Group();
   scene.add(rig);
 
-  const key = new THREE.SpotLight(0xffdcae, 110, 0, 0.52, 0.5, 1.9);
+  const key = new THREE.SpotLight(0xffdcae, 85, 0, 0.52, 0.5, 1.9);
   key.position.set(2.7, 4.3, 2.3);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
@@ -131,7 +131,7 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
   rim.target.position.set(0, 0.9, 0.3);
   rig.add(rim, rim.target);
 
-  const keysAccent = new THREE.SpotLight(0xffe6c0, 13, 0, 0.42, 0.6, 1.8);
+  const keysAccent = new THREE.SpotLight(0xffe6c0, 3, 0, 0.36, 0.6, 1.8);
   keysAccent.position.set(0.4, 2.8, 1.6);
   keysAccent.castShadow = true;
   keysAccent.shadow.mapSize.set(1024, 1024);
@@ -274,13 +274,21 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
     pianist.group.visible = !rollOn && visuals.showAvatar;
     floorGroup.visible = !rollOn;
     dust.visible = !rollOn;
+    // flat, even light for the roll UI; theatrical rig for 3D scenes
+    key.visible = !rollOn;
+    rim.visible = !rollOn;
+    keysAccent.visible = !rollOn;
+    bounce.visible = !rollOn;
+    hemi.intensity = rollOn ? 1.5 : visuals.lightMood === 'warm' ? 0.55 : visuals.lightMood === 'blue' ? 0.38 : 0.45;
+    if (rollOn) hemi.color.set(0xbfc4d4);
+    else hemi.color.set(0x24242e);
   }
 
   function applyMood(): void {
     switch (visuals.lightMood) {
       case 'noir':
         key.color.set(0xffdcae);
-        key.intensity = 110;
+        key.intensity = 85;
         rim.color.set(0x8fb0ff);
         rim.intensity = 65;
         hemi.intensity = 0.45;

@@ -64,7 +64,7 @@ export function createPost(
   const composer = new EffectComposer(renderer, target);
 
   const renderPass = new RenderPass(scene, camera);
-  const bloom = new UnrealBloomPass(size.clone(), 0.32, 0.65, 0.86);
+  const bloom = new UnrealBloomPass(size.clone(), 0.26, 0.6, 0.9);
   const bokeh = new BokehPass(scene, camera, { focus: 2.2, aperture: 0.00016, maxblur: 0.0075 });
   bokeh.enabled = false;
   const grain = new ShaderPass(GrainVignetteShader);
@@ -90,7 +90,7 @@ export function createPost(
     setQuality(q) {
       bokeh.enabled = q === 'export';
       smaa.enabled = q === 'export';
-      bloom.strength = q === 'export' ? 0.36 : 0.3;
+      bloom.strength = q === 'export' ? 0.3 : 0.26;
     },
     setFocus(distance: number) {
       (bokeh.uniforms as Record<string, THREE.IUniform>).focus.value = distance;

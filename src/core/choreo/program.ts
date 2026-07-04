@@ -64,7 +64,7 @@ const BLEND_OUT = 0.08;
 const WRIST_SPEED_CAP = 3000; // mm/s
 const WRIST_OMEGA = 18; // critically damped spring, rad/s
 const REST_Y = 46;
-const REST_Z = 188;
+const REST_Z = 238;
 
 const HOME_OFFSETS: Record<Hand, Record<Finger, number>> = {
   R: { 1: -32, 2: -15, 3: 0, 4: 15, 5: 30 },
@@ -247,7 +247,7 @@ export function buildChoreoProgram(score: PerformanceScore): ChoreoProgram {
     const home: Vec3 = {
       x: wrist.x + HOME_OFFSETS[hand][finger],
       y: wrist.y - 34,
-      z: wrist.z - 64,
+      z: wrist.z - 118,
     };
     let best: PerformanceNote | null = null;
     let bestW = 0;

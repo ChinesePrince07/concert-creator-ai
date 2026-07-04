@@ -58,11 +58,11 @@ export function evaluateShot(shot: Shot, t: number, ctx: CameraContext, state: C
   function evalType(type: ShotType): void {
     switch (type) {
       case 'WIDE_DOLLY': {
-        const r = THREE.MathUtils.lerp(4.9, 3.3, ease(p));
-        const az = THREE.MathUtils.lerp(-0.62, -0.3, ease(p)) + phases[5] * 0.02;
-        const h = THREE.MathUtils.lerp(2.0, 1.5, ease(p));
-        state.pos.set(Math.sin(az) * r + 0.4, h, -Math.cos(az) * r);
-        state.target.set(0, 0.92, -0.2);
+        const r = THREE.MathUtils.lerp(5.0, 3.4, ease(p));
+        const az = THREE.MathUtils.lerp(2.42, 2.05, ease(p)) + phases[5] * 0.02;
+        const h = THREE.MathUtils.lerp(1.8, 1.4, ease(p));
+        state.pos.set(Math.sin(az) * r + 0.2, h, -Math.cos(az) * r);
+        state.target.set(0, 0.92, 0.1);
         state.fov = 40;
         break;
       }
@@ -73,9 +73,10 @@ export function evaluateShot(shot: Shot, t: number, ctx: CameraContext, state: C
         break;
       }
       case 'CLOSE_HANDS': {
-        state.pos.set(ax * 0.8 + 0.35, 1.35 - p * 0.05, 1.05);
-        state.target.set(ax, 0.75, 0.04);
-        state.fov = 30 - p * 2;
+        // front-right diagonal crane over the keyboard
+        state.pos.set(ax * 0.5 + 0.85, 1.5 - p * 0.06, 0.72);
+        state.target.set(ax * 0.85, 0.74, 0.05);
+        state.fov = 30;
         break;
       }
       case 'TOP_DOWN': {
@@ -91,7 +92,7 @@ export function evaluateShot(shot: Shot, t: number, ctx: CameraContext, state: C
         break;
       }
       case 'ORBIT': {
-        const az0 = -1.15 + (phases[0] % 1.9);
+        const az0 = 1.8 + (phases[0] % 1.5);
         const az = az0 + p * 0.5;
         const r = 3.9;
         state.pos.set(Math.sin(az) * r + 0.2, 1.32, -Math.cos(az) * r + 0.15);
@@ -100,9 +101,9 @@ export function evaluateShot(shot: Shot, t: number, ctx: CameraContext, state: C
         break;
       }
       case 'LID': {
-        state.pos.set(1.75, 1.85 - p * 0.12, -0.7);
+        state.pos.set(2.1, 2.15 - p * 0.12, -0.85);
         state.target.set(-0.15, 0.8, 0.08);
-        state.fov = 32;
+        state.fov = 30;
         break;
       }
     }
@@ -140,10 +141,10 @@ export function evaluateCamera(
       evaluateShot({ type: 'CLOSE_HANDS', start: 0, end: 3600, seed: 12 }, t, ctx, state);
       break;
     case 'TOP': {
-      // roll mode: straight down over the full keyboard
-      state.pos.set(0, 2.6, 0.4);
-      state.target.set(0, 0.735, 0.28);
-      state.fov = 33;
+      // roll mode: high view, keys low in frame, roll filling the screen
+      state.pos.set(0, 2.45, 0.62);
+      state.target.set(0, 0.72, -0.28);
+      state.fov = 34;
       state.focus = state.pos.distanceTo(state.target);
       break;
     }
