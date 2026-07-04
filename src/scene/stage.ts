@@ -123,7 +123,7 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
   key.shadow.mapSize.set(2048, 2048);
   key.shadow.bias = -0.0002;
   key.shadow.normalBias = 0.015;
-  key.target.position.set(-0.2, 0.8, 0.1);
+  key.target.position.set(-0.2, 0.85, -0.55);
   rig.add(key, key.target);
 
   const rim = new THREE.SpotLight(0x8fb0ff, 65, 0, 0.6, 0.55, 1.9);
@@ -131,7 +131,7 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
   rim.target.position.set(0, 0.9, 0.3);
   rig.add(rim, rim.target);
 
-  const keysAccent = new THREE.SpotLight(0xffe6c0, 1.6, 0, 0.36, 0.6, 1.8);
+  const keysAccent = new THREE.SpotLight(0xffe6c0, 1.1, 0, 0.3, 0.65, 1.8);
   keysAccent.position.set(0.4, 2.8, 1.6);
   keysAccent.castShadow = true;
   keysAccent.shadow.mapSize.set(1024, 1024);
@@ -375,6 +375,10 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
 
       dust.rotation.y = t * 0.006;
       dust.position.y = Math.sin(t * 0.05) * 0.05;
+
+      // followspot rides the hands along the keyboard
+      keysAccent.position.x = activeCenter.x * 0.85 + 0.25;
+      keysAccent.target.position.x = activeCenter.x;
 
       evaluateCamera(mode, shots, t, { activeCenter, energy: 0.5 }, camState);
       camera.position.copy(camState.pos);
