@@ -13,7 +13,7 @@ import { kbToWorld } from './mapping';
  * by fingertip targets.
  */
 
-export type CharacterId = 'nocturne' | 'elena' | 'marcus' | 'yuki' | 'august';
+export type CharacterId = 'nocturne' | 'elena' | 'marcus' | 'yuki' | 'august' | 'maestro';
 
 export interface CharacterSpec {
   id: CharacterId;
@@ -34,6 +34,12 @@ export interface CharacterSpec {
 }
 
 export const CHARACTERS: CharacterSpec[] = [
+  {
+    id: 'maestro', name: 'Maestro (yours)', blurb: 'Your rigged model — own hands, full body',
+    skinColor: 0xd9a586, skinRoughness: 0.55, skinClearcoat: 0.12,
+    outfitColor: 0x1a1a20, outfitRoughness: 0.6, accentColor: 0x24242a,
+    hair: 'none', hairColor: 0x000000, gown: false, build: 1.0, face: true,
+  },
   {
     id: 'elena', name: 'Elena', blurb: 'Concert gown, dark bun',
     skinColor: 0xd9a586, skinRoughness: 0.55, skinClearcoat: 0.12,

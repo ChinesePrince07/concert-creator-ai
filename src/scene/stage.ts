@@ -14,6 +14,7 @@ import { createPiano, type PianoModelId } from './piano';
 import { type CharacterId } from './pianist';
 import { loadXRHandScenes } from './xrHands';
 import { loadCustomPiano } from './customPiano';
+import { createMixamoPianist, loadMaestro } from './mixamoPianist';
 
 export { PIANO_MODELS, type PianoModelId } from './piano';
 export { CHARACTERS, type CharacterId } from './pianist';
@@ -553,10 +554,25 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
       if (visuals.character !== character) {
         scene.remove(pianist.group);
         pianist.dispose();
-        pianist = createPianist(visuals.character);
-        scene.add(pianist.group);
         character = visuals.character;
-        attachHands(pianist);
+        if (character === 'maestro') {
+          pianist = createPianist('nocturne'); // placeholder until glb resolves
+          pianist.group.visible = false;
+          scene.add(pianist.group);
+          const want = pianist;
+          void loadMaestro().then((m) => {
+            if (m && pianist === want && character === 'maestro') {
+              scene.remove(pianist.group);
+              pianist = createMixamoPianist(m);
+              scene.add(pianist.group);
+              applyModeVisibility();
+            }
+          });
+        } else {
+          pianist = createPianist(character);
+          scene.add(pianist.group);
+          attachHands(pianist);
+        }
       }
       applyMood();
       applyModeVisibility();
