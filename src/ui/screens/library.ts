@@ -2,7 +2,7 @@ import { buildDemoMidis } from '../../core/demos/pieces';
 import { startProject } from '../../state/actions';
 import { el, fmtTime, toast } from '../dom';
 
-const ROMAN = ['I', 'II', 'III', 'IV', 'V'];
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
 const AUDIO_EXT = /\.(mp3|wav|ogg|oga|m4a|aac|flac|webm)$/i;
 const MIDI_EXT = /\.(mid|midi)$/i;
 

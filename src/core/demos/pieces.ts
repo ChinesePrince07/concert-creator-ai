@@ -175,6 +175,126 @@ function cascadeEtude(): DemoPiece {
   };
 }
 
+// --- Moonlight Sonata, Op. 27 No. 2, I — opening bars (triplet grid) ------
+function moonlight(): DemoPiece {
+  const right: N[] = [];
+  const left: N[] = [];
+  const T = (bar: number, k: number) => bar * 12 + k;
+  const trip = (bar: number, tones: number[]) => {
+    for (let k = 0; k < 12; k++) right.push([tones[k % 3], T(bar, k), 1, 0.34 + (k % 3) * 0.02]);
+  };
+  const bass = (bar: number, lo: number, hi: number) => {
+    left.push([lo, T(bar, 0), 12, 0.42], [hi, T(bar, 0), 12, 0.36]);
+  };
+  bass(0, 37, 49); trip(0, [56, 61, 64]);
+  bass(1, 37, 49); trip(1, [56, 61, 64]);
+  bass(2, 45, 57);
+  for (let k = 0; k < 6; k++) right.push([[57, 61, 64][k % 3], T(2, k), 1, 0.35]);
+  for (let k = 6; k < 12; k++) right.push([[57, 62, 66][k % 3], T(2, k), 1, 0.35]);
+  bass(3, 44, 56);
+  for (let k = 0; k < 6; k++) right.push([[56, 61, 64][k % 3], T(3, k), 1, 0.35]);
+  for (let k = 6; k < 12; k++) right.push([[56, 60, 63][k % 3], T(3, k), 1, 0.35]);
+  bass(4, 37, 49); trip(4, [56, 61, 64]);
+  right.push([68, T(4, 0), 8, 0.6], [68, T(4, 8), 4, 0.55]); // the melody enters
+  bass(5, 44, 56); trip(5, [56, 60, 66]);
+  right.push([68, T(5, 0), 12, 0.6]);
+  bass(6, 37, 49); trip(6, [56, 61, 64]);
+  const grid = 0.30;
+  return {
+    id: 'moonlight', name: 'Moonlight Sonata (I.)', composer: 'L. van Beethoven',
+    bytes: toMidi(right, left, grid, 'Moonlight Sonata'), duration: 84 * grid,
+  };
+}
+
+// --- Prelude in E minor, Op. 28 No. 4 — opening phrase ---------------------
+function chopinPrelude(): DemoPiece {
+  const right: N[] = [];
+  const left: N[] = [];
+  const stages: number[][] = [
+    [64, 59, 55], [64, 59, 54], [63, 59, 54], [63, 58, 54], [62, 57, 54], [62, 57, 52],
+  ];
+  let u = 0;
+  for (const chord of stages) {
+    for (let p = 0; p < 6; p++) {
+      for (const m of chord) left.push([m, u, 0.9, 0.3 + (p % 2) * 0.04]);
+      u += 1;
+    }
+  }
+  right.push(
+    [71, 2, 5, 0.58],
+    [71, 8, 3.5, 0.55], [72, 12, 1, 0.5], [71, 13, 3, 0.52],
+    [69, 17, 7, 0.56],
+    [71, 26, 3, 0.5], [72, 29, 1, 0.46], [71, 30, 2, 0.48], [69, 32, 3.5, 0.52],
+  );
+  const grid = 0.42;
+  return {
+    id: 'chopin-prelude', name: 'Prelude in E minor', composer: 'F. Chopin',
+    bytes: toMidi(right, left, grid, 'Prelude Op. 28 No. 4'), duration: 36 * grid,
+  };
+}
+
+// --- La Campanella — the bell (excerpt) ------------------------------------
+function campanella(): DemoPiece {
+  const right: N[] = [];
+  const left: N[] = [];
+  let u = 0;
+  const bell = () => {
+    for (let k = 0; k < 12; k++) {
+      right.push([k % 2 === 0 ? 75 : 87, u + k, 0.9, k % 2 === 0 ? 0.5 : 0.62]);
+      if (k % 6 === 0) left.push([44, u + k, 2, 0.4]);
+      if (k % 6 === 3) left.push([51, u + k, 2, 0.34]);
+    }
+    u += 12;
+  };
+  const run = () => {
+    const seq = [85, 83, 82, 80, 79, 80];
+    seq.forEach((m, i) => right.push([m, u + i, 0.9, 0.52]));
+    left.push([44, u, 2, 0.4], [51, u + 3, 2, 0.34]);
+    u += 6;
+  };
+  bell(); run(); bell(); run(); bell(); run();
+  bell();
+  right.push([80, u, 6, 0.55]);
+  left.push([44, u, 6, 0.45], [56, u, 6, 0.35]);
+  u += 6;
+  const grid = 0.19;
+  return {
+    id: 'campanella', name: 'La Campanella (excerpt)', composer: 'F. Liszt',
+    bytes: toMidi(right, left, grid, 'La Campanella'), duration: u * grid,
+  };
+}
+
+// --- Rondo alla Turca — opening strain (excerpt) ---------------------------
+function allaTurca(): DemoPiece {
+  const right: N[] = [];
+  const left: N[] = [];
+  const strain = (off: number, oct: number) => {
+    const g16 = (u: number, ms: number[]) => ms.forEach((m, i) => right.push([m + oct, off + u + i, 0.95, 0.55]));
+    g16(0, [71, 69, 68, 69]);
+    right.push([72 + oct, off + 4, 2, 0.62]);
+    g16(6, [74, 72, 71, 72]);
+    right.push([76 + oct, off + 10, 2, 0.62]);
+    g16(12, [77, 76, 75, 76]);
+    g16(16, [83, 81, 80, 81]);
+    g16(20, [83, 81, 80, 81]);
+    right.push([84 + oct, off + 24, 4, 0.7]);
+    for (let b = 4; b < 28; b += 2) {
+      if (b % 4 === 0) left.push([45, off + b, 1.8, 0.5]);
+      else left.push([60, off + b, 1.8, 0.4], [64, off + b, 1.8, 0.38]);
+    }
+  };
+  strain(0, 0);
+  strain(30, 0);
+  strain(60, 12);
+  right.push([81, 90, 2, 0.6], [84, 92, 2, 0.62], [83, 94, 1, 0.55], [81, 95, 1, 0.55], [80, 96, 1, 0.55], [81, 97, 1, 0.55], [81, 98, 6, 0.6]);
+  left.push([45, 90, 2, 0.5], [45, 94, 2, 0.5], [45, 98, 6, 0.5], [57, 98, 6, 0.4], [60, 98, 6, 0.38], [64, 98, 6, 0.36]);
+  const grid = 0.13;
+  return {
+    id: 'alla-turca', name: 'Rondo alla Turca (excerpt)', composer: 'W. A. Mozart',
+    bytes: toMidi(right, left, grid, 'Rondo alla Turca'), duration: 104 * grid,
+  };
+}
+
 export function buildDemoMidis(): DemoPiece[] {
-  return [furElise(), gymnopedie(), cascadeEtude()];
+  return [furElise(), moonlight(), chopinPrelude(), campanella(), allaTurca(), gymnopedie(), cascadeEtude()];
 }
