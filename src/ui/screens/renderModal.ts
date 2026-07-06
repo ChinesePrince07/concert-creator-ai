@@ -147,7 +147,9 @@ export function openRenderModal(opts: {
         }),
         el('span', { class: 'spacer', style: 'flex:1' }),
         el('button', { class: 'ghost', text: 'CANCEL', onclick: () => close() }),
-        el('button', { class: 'primary', text: 'RENDER', onclick: () => start() }),
+        typeof VideoEncoder === 'undefined'
+          ? el('button', { class: 'primary', text: 'RENDER', disabled: 'true', title: 'Video export needs WebCodecs — use Chrome or Edge on desktop/Android' })
+          : el('button', { class: 'primary', text: 'RENDER', onclick: () => start() }),
       ]),
     );
   }

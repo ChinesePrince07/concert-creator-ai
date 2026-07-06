@@ -364,3 +364,76 @@ input[type='range']::-webkit-slider-thumb { -webkit-appearance: none; appearance
 }
 
 .hidden { display: none !important; }
+
+/* ============================ MOBILE ============================ */
+@supports (height: 100dvh) {
+  .screen { height: 100dvh; }
+}
+
+/* touch devices: the animated grain layer forces constant full-screen
+   repaints and glassy blurs hammer tiled GPUs — go static and solid */
+@media (pointer: coarse) {
+  body::after { animation: none; opacity: 0.035; }
+  .panel, .editstrip, .notepop, .modal-backdrop, .rail button {
+    backdrop-filter: none;
+  }
+  .panel { background: rgba(16, 13, 9, 0.96); }
+  .editstrip { background: rgba(16, 13, 9, 0.96); }
+  .rail button { background: rgba(10, 8, 5, 0.85); }
+}
+
+@media (max-width: 760px) {
+  /* ---- library: stack the spread ---- */
+  .library { display: block; padding: 28px 20px; overflow-y: auto; }
+  .library-main { grid-template-columns: 1fr; gap: 28px; }
+  .dropzone { margin-top: 24px; }
+  .masthead h1 { font-size: clamp(40px, 13vw, 56px); }
+  .masthead .foot { margin-top: 16px; }
+  .prog-card { grid-template-columns: 32px 1fr auto; gap: 10px; padding: 14px 4px 12px; }
+  .prog-card .t { font-size: 17px; }
+  .prog-card .num { font-size: 20px; }
+  .dropzone { flex-direction: column; align-items: flex-start; gap: 8px; padding: 16px 18px; }
+
+  /* ---- studio: rail shrinks, panels become bottom sheets ---- */
+  .studio .topbar { padding: 10px 14px 20px; }
+  .studio .brand { gap: 8px; flex-wrap: wrap; }
+  .studio .brand .piece { max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .rail { width: 54px; padding-left: 6px; gap: 5px; }
+  .rail button { width: 44px; height: 44px; font-size: 7px; }
+  .rail button svg { width: 15px; height: 15px; }
+
+  .panel {
+    left: 62px; right: 8px; width: auto;
+    top: auto; bottom: 118px; transform: none;
+    max-height: 52vh; overflow-y: auto;
+    padding: 14px;
+    animation: sheetIn 0.22s ease-out;
+  }
+  .panel h3 { font-size: 15px; margin-bottom: 10px; }
+  .seg button { padding: 11px 4px; font-size: 11px; }
+  .char-card { padding: 12px; }
+  .toggle { width: 42px; height: 24px; border-radius: 12px; }
+  .toggle::after { width: 16px; height: 16px; }
+  .toggle.on::after { transform: translateX(20px); }
+  .swatch { width: 30px; height: 30px; }
+
+  /* ---- transport: compact, wrappable ---- */
+  .transport { padding: 26px 12px 10px; gap: 6px; }
+  .transport .controls { gap: 10px; flex-wrap: wrap; }
+  .transport .time { min-width: 0; font-size: 10px; }
+  .transport .mini { padding: 8px 9px; }
+  .playbtn { width: 46px; height: 46px; }
+  .timeline { height: 30px; }
+  .timeline .track, .timeline .fill { top: 14px; }
+  .timeline .phrase-tick { top: 11px; }
+  .timeline .head { top: 7px; }
+
+  .editstrip { bottom: 108px; height: 132px; }
+  .notepop { width: min(230px, calc(100vw - 16px)); }
+
+  .modal { padding: 18px; }
+  .modal .bigpct { font-size: 48px; }
+  .toast { left: 12px; right: 12px; }
+}
+@keyframes sheetIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; } }

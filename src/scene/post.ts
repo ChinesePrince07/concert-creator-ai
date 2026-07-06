@@ -62,29 +62,34 @@ export function createPost(
   renderer: THREE.WebGLRenderer,
   scene: THREE.Scene,
   camera: THREE.PerspectiveCamera,
+  lite = false,
 ): PostChain {
   const size = renderer.getSize(new THREE.Vector2());
   const target = new THREE.WebGLRenderTarget(size.x, size.y, {
-    samples: 4,
+    samples: lite ? 2 : 4,
     type: THREE.HalfFloatType,
   });
   const composer = new EffectComposer(renderer, target);
 
   const renderPass = new RenderPass(scene, camera);
-  const gtao = new GTAOPass(scene, camera, size.x, size.y);
-  gtao.output = GTAOPass.OUTPUT.Default;
-  gtao.blendIntensity = 0.75;
+  // mobile-lite: no ambient occlusion or depth-of-field passes — they are
+  // the two heaviest links in the chain and phone GPUs choke on them
+  const gtao = lite ? null : new GTAOPass(scene, camera, size.x, size.y);
+  if (gtao) {
+    gtao.output = GTAOPass.OUTPUT.Default;
+    gtao.blendIntensity = 0.75;
+  }
   const bloom = new UnrealBloomPass(size.clone(), 0.26, 0.6, 0.9);
-  const bokeh = new BokehPass(scene, camera, { focus: 2.2, aperture: 0.00016, maxblur: 0.0075 });
-  bokeh.enabled = false;
+  const bokeh = lite ? null : new BokehPass(scene, camera, { focus: 2.2, aperture: 0.00016, maxblur: 0.0075 });
+  if (bokeh) bokeh.enabled = false;
   const grain = new ShaderPass(GrainVignetteShader);
   const smaa = new SMAAPass();
   smaa.enabled = false;
   const output = new OutputPass();
 
   composer.addPass(renderPass);
-  composer.addPass(gtao);
-  composer.addPass(bokeh);
+  if (gtao) composer.addPass(gtao);
+  if (bokeh) composer.addPass(bokeh);
   composer.addPass(bloom);
   composer.addPass(grain);
   composer.addPass(output);
@@ -99,12 +104,12 @@ export function createPost(
       composer.setSize(w, h);
     },
     setQuality(q) {
-      bokeh.enabled = q === 'export';
+      if (bokeh) bokeh.enabled = q === 'export';
       smaa.enabled = q === 'export';
       bloom.strength = q === 'export' ? 0.3 : 0.26;
     },
     setFocus(distance: number) {
-      (bokeh.uniforms as Record<string, THREE.IUniform>).focus.value = distance;
+      if (bokeh) (bokeh.uniforms as Record<string, THREE.IUniform>).focus.value = distance;
     },
     setGrain(amount: number) {
       grain.uniforms.grain.value = amount;

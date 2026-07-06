@@ -10,6 +10,11 @@ import { kbToWorld } from './mapping';
 import { createKeyboard } from './keys';
 
 const UP_DEFAULT = new THREE.Vector3(0, 1, 0);
+
+/** coarse-pointer / small screens get the lite renderer */
+export const LITE_GPU =
+  typeof matchMedia !== 'undefined' &&
+  (matchMedia('(pointer: coarse)').matches || Math.min(screen.width, screen.height) < 520);
 import { createPiano, type PianoModelId } from './piano';
 import { type CharacterId } from './pianist';
 import { loadXRHandScenes } from './xrHands';
@@ -72,7 +77,7 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
     preserveDrawingBuffer: true,
   });
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = LITE_GPU ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
 
@@ -122,14 +127,17 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
 
   // ---- stage dressing -----------------------------------------------------
   const floorGroup = new THREE.Group();
-  const reflector = new Reflector(new THREE.CircleGeometry(9, 64), {
-    textureWidth: 1024,
-    textureHeight: 1024,
-    color: 0x828282,
-    clipBias: 0.002,
-  });
-  reflector.rotation.x = -Math.PI / 2;
-  floorGroup.add(reflector);
+  // the mirror floor renders the whole scene twice — desktop only
+  if (!LITE_GPU) {
+    const reflector = new Reflector(new THREE.CircleGeometry(9, 64), {
+      textureWidth: 1024,
+      textureHeight: 1024,
+      color: 0x828282,
+      clipBias: 0.002,
+    });
+    reflector.rotation.x = -Math.PI / 2;
+    floorGroup.add(reflector);
+  }
   const dim = new THREE.Mesh(
     new THREE.CircleGeometry(9, 64),
     new THREE.MeshStandardMaterial({
@@ -137,7 +145,7 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
       roughness: 0.92,
       metalness: 0,
       transparent: true,
-      opacity: 0.72,
+      opacity: LITE_GPU ? 0.94 : 0.72,
     }),
   );
   dim.rotation.x = -Math.PI / 2;
@@ -167,7 +175,7 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
   const key = new THREE.SpotLight(0xffdcae, 70, 0, 0.52, 0.5, 1.9);
   key.position.set(2.7, 4.3, 2.3);
   key.castShadow = true;
-  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.mapSize.set(LITE_GPU ? 1024 : 2048, LITE_GPU ? 1024 : 2048);
   key.shadow.bias = -0.0002;
   key.shadow.normalBias = 0.015;
   key.target.position.set(-0.2, 0.85, -0.55);
@@ -181,7 +189,7 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
   const keysAccent = new THREE.SpotLight(0xffe6c0, 0.55, 0, 0.3, 0.65, 1.8);
   keysAccent.position.set(0.4, 2.8, 1.6);
   keysAccent.castShadow = true;
-  keysAccent.shadow.mapSize.set(1024, 1024);
+  keysAccent.shadow.mapSize.set(LITE_GPU ? 512 : 1024, LITE_GPU ? 512 : 1024);
   keysAccent.shadow.bias = -0.00025;
   keysAccent.target.position.set(0, 0.74, 0.05);
   rig.add(keysAccent, keysAccent.target);
@@ -322,7 +330,7 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
   const roll = createRoll();
   scene.add(roll.group);
 
-  const post: PostChain = createPost(renderer, scene, camera);
+  const post: PostChain = createPost(renderer, scene, camera, LITE_GPU);
 
   // ---- state ------------------------------------------------------------------
   let score: PerformanceScore | null = null;

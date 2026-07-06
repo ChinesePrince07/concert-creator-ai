@@ -118,7 +118,8 @@ export function studioScreen(initial: AppState): {
 
   function resize(): void {
     if (exporting) return;
-    scene.resize(window.innerWidth, window.innerHeight, Math.min(devicePixelRatio, 1.5));
+    const coarse = matchMedia('(pointer: coarse)').matches;
+    scene.resize(window.innerWidth, window.innerHeight, Math.min(devicePixelRatio, coarse ? 1.15 : 1.5));
   }
 
   const duration = () => project.perf.score.duration;
