@@ -17,7 +17,6 @@ export const LITE_GPU =
   (matchMedia('(pointer: coarse)').matches || Math.min(screen.width, screen.height) < 520);
 import { createPiano, type PianoModelId } from './piano';
 import { type CharacterId } from './pianist';
-import { loadXRHandScenes } from './xrHands';
 import { loadCustomPiano } from './customPiano';
 import { createMixamoPianist, loadMaestro } from './mixamoPianist';
 
@@ -47,8 +46,8 @@ export const DEFAULT_VISUALS: VisualSettings = {
   showAvatar: true,
   lightMood: 'noir',
   rollZoom: 1,
-  pianoModel: 'steinway',
-  character: 'elena',
+  pianoModel: 'scanned',
+  character: 'maestro',
 };
 
 export interface ConcertScene {
@@ -317,16 +316,26 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
       applyPianoChoice();
     }
   });
-  let pianist = createPianist(DEFAULT_VISUALS.character);
   let character: CharacterId = DEFAULT_VISUALS.character;
+  let pianist = createPianist(character); // procedural placeholder / GLB-failure fallback
   scene.add(pianist.group);
-  const xrHands = loadXRHandScenes();
-  const attachHands = (target: typeof pianist) => {
-    void xrHands.then((scenes) => {
-      if (scenes && pianist === target) target.attachXRHands(scenes);
+
+  // The pianist is Andy's Mixamo-rigged GLB. Show the hidden placeholder, then
+  // swap in the rigged model once it loads (and whenever re-selected).
+  function loadMaestroInto(): void {
+    pianist.group.visible = false;
+    const want = pianist;
+    void loadMaestro().then((m) => {
+      if (m && pianist === want && character === 'maestro') {
+        scene.remove(pianist.group);
+        pianist.dispose();
+        pianist = createMixamoPianist(m);
+        scene.add(pianist.group);
+        applyModeVisibility();
+      }
     });
-  };
-  attachHands(pianist);
+  }
+  loadMaestroInto();
   const roll = createRoll();
   scene.add(roll.group);
 
@@ -368,9 +377,11 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
     roll.setVisible(rollOn);
     // Synthesia modes keep the hands in frame under the tiles. Classic Top View
     // strips the world to black void: keys, hands, tiles, nothing else.
-    pianist.group.visible = visuals.showAvatar;
-    pianist.setHeadVisible(!rollOn); // head out of frame in both Synthesia views
-    pianist.setHandsOnly(classicTop); // reference framing: hands + forearms only
+    // Maestro is one skinned mesh — it can't be cropped to just hands, so the
+    // classic Top View becomes pure keys + falling tiles (the Synthesia look).
+    pianist.group.visible = visuals.showAvatar && !classicTop;
+    pianist.setHeadVisible(!rollOn); // head out of frame in Synthesia views
+    pianist.setHandsOnly(classicTop);
     piano.setLidVisible(!rollOn);
     piano.group.visible = !classicTop && !(pianoModel === 'scanned' && customPiano);
     if (customPiano) customPiano.visible = !classicTop && pianoModel === 'scanned';
@@ -563,24 +574,9 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
         scene.remove(pianist.group);
         pianist.dispose();
         character = visuals.character;
-        if (character === 'maestro') {
-          pianist = createPianist('nocturne'); // placeholder until glb resolves
-          pianist.group.visible = false;
-          scene.add(pianist.group);
-          const want = pianist;
-          void loadMaestro().then((m) => {
-            if (m && pianist === want && character === 'maestro') {
-              scene.remove(pianist.group);
-              pianist = createMixamoPianist(m);
-              scene.add(pianist.group);
-              applyModeVisibility();
-            }
-          });
-        } else {
-          pianist = createPianist(character);
-          scene.add(pianist.group);
-          attachHands(pianist);
-        }
+        pianist = createPianist(character);
+        scene.add(pianist.group);
+        loadMaestroInto();
       }
       applyMood();
       applyModeVisibility();

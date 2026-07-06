@@ -13,7 +13,7 @@ import { kbToWorld } from './mapping';
  * by fingertip targets.
  */
 
-export type CharacterId = 'nocturne' | 'elena' | 'marcus' | 'yuki' | 'august' | 'maestro';
+export type CharacterId = 'maestro';
 
 export interface CharacterSpec {
   id: CharacterId;
@@ -35,40 +35,13 @@ export interface CharacterSpec {
 
 export const CHARACTERS: CharacterSpec[] = [
   {
+    // The only pianist is Andy's supplied Mixamo-rigged GLB (built by
+    // mixamoPianist.ts). This spec only tints the procedural placeholder that
+    // shows for the split-second before the GLB finishes loading.
     id: 'maestro', name: 'Maestro (yours)', blurb: 'Your rigged model — own hands, full body',
     skinColor: 0xd9a586, skinRoughness: 0.55, skinClearcoat: 0.12,
     outfitColor: 0x1a1a20, outfitRoughness: 0.6, accentColor: 0x24242a,
     hair: 'none', hairColor: 0x000000, gown: false, build: 1.0, face: true,
-  },
-  {
-    id: 'elena', name: 'Elena', blurb: 'Concert gown, dark bun',
-    skinColor: 0xd9a586, skinRoughness: 0.55, skinClearcoat: 0.12,
-    outfitColor: 0x11302a, outfitRoughness: 0.72, accentColor: 0x0c221d,
-    hair: 'bun', hairColor: 0x241610, gown: true, build: 0.94, face: true,
-  },
-  {
-    id: 'marcus', name: 'Marcus', blurb: 'Classic tailcoat',
-    skinColor: 0x6b442c, skinRoughness: 0.58, skinClearcoat: 0.1,
-    outfitColor: 0x0d0d11, outfitRoughness: 0.55, accentColor: 0xe6e1d4,
-    hair: 'short', hairColor: 0x0e0a08, gown: false, build: 1.06, face: true,
-  },
-  {
-    id: 'yuki', name: 'Yuki', blurb: 'Ivory blouse, long hair',
-    skinColor: 0xeccdb0, skinRoughness: 0.52, skinClearcoat: 0.14,
-    outfitColor: 0xcfc7b6, outfitRoughness: 0.68, accentColor: 0x24242a,
-    hair: 'long', hairColor: 0x15100e, gown: false, build: 0.92, face: true,
-  },
-  {
-    id: 'august', name: 'August', blurb: 'Charcoal turtleneck, silver hair',
-    skinColor: 0xc39b7d, skinRoughness: 0.56, skinClearcoat: 0.1,
-    outfitColor: 0x26262c, outfitRoughness: 0.8, accentColor: 0x1a1a1f,
-    hair: 'swept', hairColor: 0xb4b8bf, gown: false, build: 1.02, face: true,
-  },
-  {
-    id: 'nocturne', name: 'Nocturne', blurb: 'The obsidian sculpture',
-    skinColor: 0x131217, skinRoughness: 0.42, skinClearcoat: 0.4,
-    outfitColor: 0x101013, outfitRoughness: 0.52, accentColor: 0x131217,
-    hair: 'none', hairColor: 0x000000, gown: false, build: 1.0, face: false,
   },
 ];
 
@@ -184,13 +157,13 @@ function taperedPhalanx(len: number, rBase: number, rTip: number, rounded: boole
   return geo;
 }
 
-export function createPianist(characterId: CharacterId = 'nocturne'): PianistRig {
+export function createPianist(characterId: CharacterId = 'maestro'): PianistRig {
   const spec = CHARACTERS.find((c) => c.id === characterId) ?? CHARACTERS[CHARACTERS.length - 1];
   const body = new THREE.MeshPhysicalMaterial({
     color: spec.outfitColor,
     roughness: spec.outfitRoughness,
     metalness: 0.04,
-    clearcoat: spec.id === 'nocturne' ? 0.35 : 0.08,
+    clearcoat: 0.08,
     clearcoatRoughness: 0.45,
   });
   const skinBase = new THREE.Color(spec.skinColor);
@@ -285,14 +258,6 @@ export function createPianist(characterId: CharacterId = 'nocturne'): PianistRig
   coat.scale.set(bulk, 1, 0.7);
   coat.castShadow = true;
   spine1.add(coat);
-
-  if (spec.id === 'marcus') {
-    // slim shirt-front strip under the tailcoat
-    const shirt = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.17, 0.02), accent);
-    shirt.position.set(0, 0.33, -0.1);
-    shirt.rotation.x = 0.12;
-    spine1.add(shirt);
-  }
 
   const spine1Mesh = new THREE.Mesh(new THREE.SphereGeometry(0.118, 20, 16), body);
   spine1Mesh.scale.set(0.98, 0.92, 0.62);

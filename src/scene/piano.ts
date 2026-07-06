@@ -7,7 +7,7 @@ import { toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
  * and a bench. World meters; keyboard front edge at z≈0.16, body into -z.
  */
 
-export type PianoModelId = 'steinway' | 'yamaha' | 'bosendorfer' | 'kawai' | 'fazioli' | 'scanned';
+export type PianoModelId = 'scanned';
 
 export interface PianoModelSpec {
   id: PianoModelId;
@@ -30,40 +30,13 @@ export interface PianoModelSpec {
 
 export const PIANO_MODELS: PianoModelSpec[] = [
   {
-    id: 'scanned', name: 'Your Steinway (GLB)', blurb: 'Photoreal model you supplied — app keys overlaid',
+    // The only piano is Andy's supplied photoreal GLB (loaded by customPiano.ts).
+    // This spec drives the procedural fallback body that stays hidden behind the
+    // GLB (and shows only if the GLB fails to load).
+    id: 'scanned', name: 'Steinway (your GLB)', blurb: 'Photoreal model you supplied — app keys overlaid',
     lengthScale: 1.0, widthScale: 1.0, finishColor: 0x060607, finishRoughness: 0.07,
     plateColor: 0x574320, plateMetalness: 0.7, feltColor: 0x8c1626, soundboardColor: 0x120b05,
     hardwareColor: 0xb08d3f, hardwareMetalness: 1.0, hardwareRoughness: 0.32, stringColor: 0xd8d3c4, extraBassKeys: 0,
-  },
-  {
-    id: 'steinway', name: 'Steinway & Sons D-274', blurb: 'Black polish, gold plate, red felt',
-    lengthScale: 1.0, widthScale: 1.0, finishColor: 0x060607, finishRoughness: 0.07,
-    plateColor: 0x574320, plateMetalness: 0.7, feltColor: 0x8c1626, soundboardColor: 0x120b05,
-    hardwareColor: 0xb08d3f, hardwareMetalness: 1.0, hardwareRoughness: 0.32, stringColor: 0xd8d3c4, extraBassKeys: 0,
-  },
-  {
-    id: 'yamaha', name: 'Yamaha CFX', blurb: 'Cleaner gloss, pale plate, green felt',
-    lengthScale: 0.98, widthScale: 1.0, finishColor: 0x050506, finishRoughness: 0.055,
-    plateColor: 0x6b5a2e, plateMetalness: 0.6, feltColor: 0x1f5c40, soundboardColor: 0x1a1008,
-    hardwareColor: 0x9aa0a8, hardwareMetalness: 1.0, hardwareRoughness: 0.28, stringColor: 0xe2ddd0, extraBassKeys: 0,
-  },
-  {
-    id: 'bosendorfer', name: 'Bösendorfer Imperial', blurb: 'Extra black bass keys, satin Viennese case',
-    lengthScale: 1.1, widthScale: 1.08, finishColor: 0x0a0a0c, finishRoughness: 0.22,
-    plateColor: 0x4a3a1c, plateMetalness: 0.65, feltColor: 0x701320, soundboardColor: 0x1c1209,
-    hardwareColor: 0xa8843c, hardwareMetalness: 1.0, hardwareRoughness: 0.4, stringColor: 0xd0cbbd, extraBassKeys: 4,
-  },
-  {
-    id: 'kawai', name: 'Shigeru Kawai SK-EX', blurb: 'Copper plate, signature blue accents',
-    lengthScale: 1.02, widthScale: 1.0, finishColor: 0x070708, finishRoughness: 0.08,
-    plateColor: 0x5a3d22, plateMetalness: 0.8, feltColor: 0x1e3a6e, soundboardColor: 0x160d06,
-    hardwareColor: 0xb08d3f, hardwareMetalness: 1.0, hardwareRoughness: 0.32, stringColor: 0xd8d3c4, extraBassKeys: 0,
-  },
-  {
-    id: 'fazioli', name: 'Fazioli F308', blurb: 'The longest grand — mirror gloss, chrome hardware',
-    lengthScale: 1.16, widthScale: 1.0, finishColor: 0x08080a, finishRoughness: 0.05,
-    plateColor: 0x7d6a35, plateMetalness: 0.75, feltColor: 0x9c1c2c, soundboardColor: 0x241206,
-    hardwareColor: 0xc8ccd2, hardwareMetalness: 1.0, hardwareRoughness: 0.14, stringColor: 0xe6e2d6, extraBassKeys: 0,
   },
 ];
 
@@ -100,7 +73,7 @@ function orientPlan(geo: THREE.BufferGeometry, frontZ: number, yBottom: number):
   geo.translate(0, yBottom, frontZ);
 }
 
-export function createPiano(modelId: PianoModelId = 'steinway'): PianoRig {
+export function createPiano(modelId: PianoModelId = 'scanned'): PianoRig {
   const cfg = PIANO_MODELS.find((m) => m.id === modelId) ?? PIANO_MODELS[0];
   const group = new THREE.Group();
   const black = new THREE.MeshPhysicalMaterial({
@@ -258,7 +231,7 @@ export function createPiano(modelId: PianoModelId = 'steinway'): PianoRig {
   // lid prop
   const prop = new THREE.Mesh(
     new THREE.CylinderGeometry(0.011, 0.011, 0.72),
-    cfg.id === 'fazioli' ? gold : black.clone(),
+    black.clone(),
   );
   prop.position.set(0.5, 1.24, -0.95 * cfg.lengthScale);
   prop.rotation.z = THREE.MathUtils.degToRad(-16);
