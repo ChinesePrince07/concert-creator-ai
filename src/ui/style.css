@@ -211,8 +211,13 @@ button:disabled { opacity: 0.35; pointer-events: none; }
   position: absolute; left: 0; top: 0; bottom: 0; width: 64px; z-index: 30;
   display: flex; flex-direction: column; justify-content: center; gap: 6px;
   padding-left: 10px;
+  /* Container spans full height but only the buttons should catch clicks —
+     otherwise the empty gutter below the icons covers the transport play
+     button (bottom-left) and swallows every click. */
+  pointer-events: none;
 }
 .rail button {
+  pointer-events: auto;
   width: 48px; height: 48px; padding: 0;
   display: grid; place-items: center; gap: 0;
   border: 1px solid transparent;
