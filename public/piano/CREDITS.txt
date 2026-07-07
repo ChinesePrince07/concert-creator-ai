@@ -1,0 +1,8 @@
+Salamander Grand Piano
+by Alexander Holm — https://archive.org/details/SalamanderGrandPianoV3
+Licensed under Creative Commons Attribution 3.0 (CC-BY 3.0).
+
+MP3 renditions (one sample every 3 semitones) sourced from the Tone.js
+sample set: https://github.com/Tonejs/Tone.js
+
+These recordings voice the virtual grand in Concert Creator.

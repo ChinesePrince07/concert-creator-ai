@@ -1,4 +1,6 @@
-import { renderScoreToPcm, type PcmResult } from '../core/audio/synth';
+import { renderScoreToPcm, type PcmResult, type SynthScore } from '../core/audio/synth';
+import { renderScoreToPcmSampled, type SampleBank } from '../core/audio/sampler';
+import { getLoadedBank, loadPianoSampleBank } from '../core/audio/sampleBank';
 import { buildChoreoProgram, type ChoreoProgram } from '../core/choreo/program';
 import { detectPhrases } from '../core/choreo/phrases';
 import { planShots, type ShotPlan } from '../core/cinema/planner';
@@ -116,6 +118,12 @@ export interface StageReporter {
 
 const paint = () => new Promise((r) => setTimeout(r, 16));
 
+/** Voice the score: real sampled grand when the bank is loaded, else the synth. */
+function voicePiano(score: SynthScore, bank: SampleBank | null): PcmResult {
+  if (bank && bank.entries.length > 0) return renderScoreToPcmSampled(score, bank, 48000);
+  return renderScoreToPcm(score, 48000);
+}
+
 export async function runPipeline(
   input: PipelineInput,
   report: StageReporter,
@@ -167,9 +175,15 @@ export async function runPipeline(
   } else {
     report.start('Voicing the piano');
     await paint();
-    const pcm = renderScoreToPcm(
+    let bank: SampleBank | null = null;
+    try {
+      bank = await loadPianoSampleBank('/piano/', (d, t) => report.progress(Math.round((d / t) * 100)));
+    } catch (e) {
+      console.warn('piano samples failed to load; falling back to synth', e);
+    }
+    const pcm = voicePiano(
       { notes: perf.score.notes, pedal: perf.score.pedal, duration: perf.score.duration },
-      48000,
+      bank,
     );
     audio = { kind: 'synth', pcm };
     report.done(`${pcm.duration.toFixed(1)}s`);
@@ -186,9 +200,9 @@ export function regenerate(
 ): { perf: Performance; pcm?: PcmResult } {
   const perf = buildPerformance(imported, edits);
   if (audioKind === 'synth') {
-    const pcm = renderScoreToPcm(
+    const pcm = voicePiano(
       { notes: perf.score.notes, pedal: perf.score.pedal, duration: perf.score.duration },
-      48000,
+      getLoadedBank(),
     );
     return { perf, pcm };
   }
