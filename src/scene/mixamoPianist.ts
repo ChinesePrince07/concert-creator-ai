@@ -19,6 +19,12 @@ const FINGERS = ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky'] as const;
 // finger curl axis/sign for mixamo local frames (verified visually)
 const CURL_AXIS: 'x' | 'y' | 'z' = 'z';
 const CURL_SIGN: Record<Hand, number> = { L: -1, R: 1 };
+// finger abduction (lateral spread) so the hand fans across the keys instead of
+// clumping into a claw. Applied on the knuckle, perpendicular to the curl axis.
+const SPLAY_AXIS: 'x' | 'y' | 'z' = 'x';
+const SPLAY_SIGN: Record<Hand, number> = { L: 1, R: -1 };
+// resting fan per finger [thumb, index, middle, ring, pinky]
+const FINGER_FAN = [0.4, 0.14, 0.0, -0.13, -0.24];
 
 let cached: Promise<THREE.Group | null> | null = null;
 export function loadMaestro(): Promise<THREE.Group | null> {
@@ -196,6 +202,7 @@ export function createMixamoPianist(source: THREE.Group): PianistRig {
   const UP_Y = new THREE.Vector3(0, 1, 0);
   const rollQ = new THREE.Quaternion();
   const axis = new THREE.Vector3();
+  const splayAxisV = new THREE.Vector3();
 
   /** rotate `bone` (world-space delta) so `child` reaches `target` */
   function aimBone(bone: THREE.Object3D, child: THREE.Object3D, target: THREE.Vector3): void {
@@ -247,8 +254,10 @@ export function createMixamoPianist(source: THREE.Group): PianistRig {
     handB.quaternion.copy(qParent.invert()).multiply(qWorld);
     handB.updateMatrixWorld(true);
 
-    // fingers: curl from the solved chain, on his own bones
+    // fingers: curl from the solved chain, on his own bones, fanned so the
+    // hand spreads across the keys instead of clumping
     axis.set(CURL_AXIS === 'x' ? 1 : 0, CURL_AXIS === 'y' ? 1 : 0, CURL_AXIS === 'z' ? 1 : 0);
+    splayAxisV.set(SPLAY_AXIS === 'x' ? 1 : 0, SPLAY_AXIS === 'y' ? 1 : 0, SPLAY_AXIS === 'z' ? 1 : 0);
     for (let i = 0; i < 5; i++) {
       const chain = fingerBones[hand][i];
       const rest = fingerRest[hand][i];
@@ -258,9 +267,11 @@ export function createMixamoPianist(source: THREE.Group): PianistRig {
         -0.2 - fp.press * 0.5 - fp.curl * 0.3,
         -0.1 - fp.press * 0.3 - fp.curl * 0.2,
       ];
+      const spread = (FINGER_FAN[i] + fp.splay * 0.28) * SPLAY_SIGN[hand];
       for (let s = 0; s < chain.length; s++) {
         const b = chain[s];
         b.quaternion.copy(rest[s]);
+        if (s === 0) b.rotateOnAxis(splayAxisV, spread);
         b.rotateOnAxis(axis, curls[s] * CURL_SIGN[hand] * (i === 0 ? 0.6 : 1));
       }
     }
