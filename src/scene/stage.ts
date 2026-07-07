@@ -320,6 +320,41 @@ export function createConcertScene(canvas: HTMLCanvasElement): ConcertScene {
   let pianist = createPianist(character); // procedural placeholder / GLB-failure fallback
   scene.add(pianist.group);
 
+  // ---- piano bench ----------------------------------------------------------
+  // A real performance needs somewhere to sit; the pianist's soles rest on the
+  // floor and his thighs on this. Centered in front of the keys.
+  const bench = (() => {
+    const g = new THREE.Group();
+    const wood = new THREE.MeshStandardMaterial({ color: 0x241a12, roughness: 0.5, metalness: 0.1 });
+    const leather = new THREE.MeshStandardMaterial({ color: 0x1b1410, roughness: 0.7, metalness: 0 });
+    const topY = 0.5;
+    const w = 0.72;
+    const d = 0.34;
+    const top = new THREE.Mesh(new THREE.BoxGeometry(w, 0.07, d), leather);
+    top.position.set(0, topY, 0);
+    top.castShadow = true;
+    top.receiveShadow = true;
+    g.add(top);
+    const legGeo = new THREE.BoxGeometry(0.05, topY - 0.035, 0.05);
+    const inset = 0.06;
+    for (const sx of [-1, 1] as const)
+      for (const sz of [-1, 1] as const) {
+        const leg = new THREE.Mesh(legGeo, wood);
+        leg.position.set(sx * (w / 2 - inset), (topY - 0.035) / 2, sz * (d / 2 - inset));
+        leg.castShadow = true;
+        g.add(leg);
+      }
+    // side stretchers so it reads as a bench, not a stool
+    for (const sx of [-1, 1] as const) {
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, d - 2 * inset), wood);
+      bar.position.set(sx * (w / 2 - inset), topY * 0.45, 0);
+      g.add(bar);
+    }
+    g.position.set(0, 0, 0.5); // under the hips, in front of the keyboard
+    return g;
+  })();
+  scene.add(bench);
+
   // The pianist is Andy's Mixamo-rigged GLB. Show the hidden placeholder, then
   // swap in the rigged model once it loads (and whenever re-selected).
   function loadMaestroInto(): void {

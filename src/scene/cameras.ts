@@ -61,34 +61,41 @@ export function evaluateShot(shot: Shot, t: number, ctx: CameraContext, state: C
   state.target.addScaledVector(_drift, 0.25);
   state.focus = state.pos.distanceTo(state.target);
 
+  // Calibrated to the seated performer: head (0,1.14,0.48), hands (0,0.78,0.24),
+  // keyboard (0,0.735,0.1), bench z 0.5; pianist faces -z, +x is his right
+  // (treble), audience/front is +z. See stage.ts for the world layout.
   function evalType(type: ShotType): void {
     switch (type) {
       case 'WIDE_DOLLY': {
-        const r = THREE.MathUtils.lerp(5.0, 3.4, ease(p));
-        const az = THREE.MathUtils.lerp(2.42, 2.05, ease(p)) + phases[5] * 0.02;
-        const h = THREE.MathUtils.lerp(1.8, 1.4, ease(p));
-        state.pos.set(Math.sin(az) * r + 0.2, h, -Math.cos(az) * r);
-        state.target.set(0, 0.92, 0.1);
+        // hero establishing from the treble side: face lit, whole grand sweeping
+        // away to frame-right, slow push-in. (An audience/+z angle only shows his
+        // back — the flattering views are from the keyboard ends.)
+        const k = ease(p);
+        state.pos.set(2.72 - 0.32 * k, 1.55 - 0.07 * k, 1.22 - 0.16 * k);
+        state.target.set(-0.05, 0.9, 0.05);
         state.fov = 40;
         break;
       }
       case 'SIDE_LOW': {
-        state.pos.set(-2.35 + p * 0.22, 1.02, 0.75);
-        state.target.set(0.45, 0.8, 0.15);
-        state.fov = 34;
+        // left-side profile, low, looking across the keys toward the treble
+        state.pos.set(-2.4 + p * 0.18, 1.05, 1.05 - p * 0.12);
+        state.target.set(0.28, 0.85, 0.24);
+        state.fov = 33;
         break;
       }
       case 'CLOSE_HANDS': {
-        // front-right diagonal crane over the keyboard
-        state.pos.set(ax * 0.5 + 0.85, 1.5 - p * 0.06, 0.72);
-        state.target.set(ax * 0.85, 0.74, 0.05);
-        state.fov = 30;
+        // intimate 3/4 from the treble end: the player's face and hands at the
+        // keys (a macro would only expose the low-poly hands — this flatters them)
+        state.pos.set(ax * 0.15 + 1.22, 1.0, 0.44);
+        state.target.set(ax * 0.3 - 0.16, 0.82, 0.2);
+        state.fov = 41;
         break;
       }
       case 'TOP_DOWN': {
-        state.pos.set(ax * 0.55, 2.25, 0.28);
-        state.target.set(ax * 0.55, 0.735, 0.05);
-        state.fov = 30;
+        // high three-quarter looking down the keyboard and the player's hands
+        state.pos.set(ax * 0.4, 1.92, 0.62);
+        state.target.set(ax * 0.4, 0.76, 0.02);
+        state.fov = 40;
         break;
       }
       case 'FIRST_PERSON': {
@@ -98,25 +105,28 @@ export function evaluateShot(shot: Shot, t: number, ctx: CameraContext, state: C
           state.up = ctx.eye.up;
           state.fov = 50;
         } else {
-          state.pos.set(0.02, 1.44, 0.8);
-          state.target.set(ax * 0.75, 0.74, -0.02);
-          state.fov = 46;
+          state.pos.set(0.0, 1.5, 0.6);
+          state.target.set(ax * 0.5, 0.78, 0.02);
+          state.fov = 52;
         }
         break;
       }
       case 'ORBIT': {
-        const az0 = 1.8 + (phases[0] % 1.5);
-        const az = az0 + p * 0.5;
-        const r = 3.9;
-        state.pos.set(Math.sin(az) * r + 0.2, 1.32, -Math.cos(az) * r + 0.15);
-        state.target.set(0, 0.88, 0);
+        // sweep across the audience side only — never dips behind the raised lid
+        const a = Math.PI * (0.3 + 0.32 * ease(p));
+        const r = 3.0;
+        state.pos.set(Math.cos(a) * r * 1.05, 1.36, Math.sin(a) * r + 0.1);
+        state.target.set(0, 0.9, -0.05);
         state.fov = 36;
         break;
       }
       case 'LID': {
-        state.pos.set(2.1, 2.15 - p * 0.12, -0.85);
-        state.target.set(-0.15, 0.8, 0.08);
-        state.fov = 30;
+        // bass-side glamour: the open lid and its warm glow sweep frame-left, the
+        // player in profile frame-right
+        const k = ease(p);
+        state.pos.set(-2.6 + 0.16 * k, 1.5 - 0.05 * k, 1.15 - 0.14 * k);
+        state.target.set(0.2, 0.9, 0.05);
+        state.fov = 40;
         break;
       }
     }
@@ -178,9 +188,9 @@ export function evaluateCamera(
       break;
     }
     case 'ORBIT': {
-      const az = t * (Math.PI * 2 / 46);
-      state.pos.set(Math.sin(az) * 3.9 + 0.2, 1.5, -Math.cos(az) * 3.9 + 0.1);
-      state.target.set(0, 0.88, 0);
+      const az = t * ((Math.PI * 2) / 44);
+      state.pos.set(Math.sin(az) * 3.3, 1.46, Math.cos(az) * 3.3 + 0.1);
+      state.target.set(0, 0.92, -0.05);
       state.fov = 36;
       state.focus = state.pos.distanceTo(state.target);
       break;

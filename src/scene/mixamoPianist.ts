@@ -57,41 +57,61 @@ export function createMixamoPianist(source: THREE.Group): PianistRig {
   });
   const B = (n: string) => bones.get(n) ?? null;
 
-  // ---- normalize: scale to human height, face -z, sit at the bench --------
+  // ---- normalize: scale to adult height, face -z, sit at the bench --------
   model.updateMatrixWorld(true);
   let box = new THREE.Box3().setFromObject(model);
   const rawH = Math.max(1e-3, box.getSize(new THREE.Vector3()).y);
-  model.scale.multiplyScalar(1.38 / rawH);
+  model.scale.multiplyScalar(1.72 / rawH); // adult stature — legs long enough to reach the floor
   model.rotation.y = Math.PI; // T-pose faces +z → face the keyboard (-z)
   model.updateMatrixWorld(true);
 
-  // seated pose (static): thighs forward, knees bent, feet by the pedals
+  // seated pose (static): thighs down-forward off the bench, shins near-vertical,
+  // soles flat. A slight outward knee splay reads as a relaxed player's stance.
   const rx = (n: string, a: number) => {
     const b = B(n);
     if (b) b.rotateX(a);
   };
-  rx('LeftUpLeg', 1.35);
-  rx('RightUpLeg', 1.28);
-  rx('LeftLeg', -1.35);
-  rx('RightLeg', -1.22);
-  rx('LeftFoot', 0.5);
-  rx('RightFoot', 0.55);
-  // arms down from T-pose toward the keys; IK refines every frame
   const rz = (n: string, a: number) => {
     const b = B(n);
     if (b) b.rotateZ(a);
   };
+  rx('LeftUpLeg', 1.45);
+  rx('RightUpLeg', 1.42);
+  rx('LeftLeg', -1.42);
+  rx('RightLeg', -1.34);
+  rx('LeftFoot', 0.52);
+  rx('RightFoot', 0.55);
+  rz('LeftUpLeg', 0.08);
+  rz('RightUpLeg', -0.08);
+  // arms down from T-pose toward the keys; IK refines every frame
   rz('LeftArm', -1.1);
   rz('RightArm', 1.1);
   model.updateMatrixWorld(true);
 
-  // place hips over the bench
+  // place hips horizontally over the bench (x centered, z in front of the keys)
   const hips = B('Hips');
   const hipsW = new THREE.Vector3();
   hips?.getWorldPosition(hipsW);
   model.position.x -= hipsW.x;
-  model.position.y += 0.62 - hipsW.y;
-  model.position.z += 0.52 - hipsW.z;
+  model.position.z += 0.5 - hipsW.z;
+  model.updateMatrixWorld(true);
+
+  // drop the whole figure so the soles rest on the floor. Box3.setFromObject on a
+  // skinned mesh returns *bind-pose* bounds (ignores our seated rotations), so we
+  // read the actual deformed foot-bone world Y instead. This also pulls the hips
+  // down to a real bench height and kills the "floating mannequin" look.
+  const footWorldY = (n: string): number => {
+    const b = B(n);
+    if (!b) return Infinity;
+    return b.getWorldPosition(new THREE.Vector3()).y;
+  };
+  const soleBone = Math.min(
+    footWorldY('LeftToeBase'),
+    footWorldY('RightToeBase'),
+    footWorldY('LeftFoot'),
+    footWorldY('RightFoot'),
+  );
+  if (Number.isFinite(soleBone)) model.position.y += 0.04 - soleBone; // ~sole thickness under the ankle bone
   model.updateMatrixWorld(true);
 
   // rest data for retargeting
