@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="410" viewBox="0 0 1200 410" role="img" aria-labelledby="title desc">
+  <title id="title">Concert Creator — AI Virtual Pianist</title>
+  <desc id="desc">A cinematic piano-stage title card showing music flowing through hand separation, fingering, choreography, and camera direction.</desc>
+  <rect width="1200" height="410" rx="28" fill="#100d12"/>
+  <path d="M0 337H1200" stroke="#6f2033" stroke-width="2"/>
+  <g transform="translate(58 48)">
+    <text font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="19" letter-spacing="3" fill="#d9a85f">BROWSER-NATIVE PERFORMANCE ENGINE</text>
+    <text y="79" font-family="Georgia, 'Times New Roman', serif" font-size="66" fill="#fff8eb">Concert Creator</text>
+    <text y="134" font-family="Georgia, 'Times New Roman', serif" font-size="35" font-style="italic" fill="#d8c8b5">AI Virtual Pianist</text>
+    <text y="188" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="24" fill="#b9aeb7">Turn piano audio or MIDI into a directed 3D performance.</text>
+    <g transform="translate(0 232)" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="17">
+      <text fill="#d9a85f">NOTES</text><path d="M66 -6H110" stroke="#6f2033" stroke-width="2"/>
+      <text x="124" fill="#eee1d1">HANDS</text><path d="M190 -6H234" stroke="#6f2033" stroke-width="2"/>
+      <text x="248" fill="#eee1d1">MOTION</text><path d="M320 -6H364" stroke="#6f2033" stroke-width="2"/>
+      <text x="378" fill="#eee1d1">CAMERA</text><path d="M449 -6H493" stroke="#6f2033" stroke-width="2"/>
+      <text x="507" fill="#eee1d1">VIDEO</text>
+    </g>
+  </g>
+  <g transform="translate(745 46)">
+    <path d="M0 230L204 20L408 230Z" fill="#211722"/>
+    <path d="M76 230L204 82L332 230Z" fill="#321a25"/>
+    <circle cx="204" cy="82" r="7" fill="#d9a85f"/>
+    <g transform="translate(22 210)">
+      <rect width="366" height="115" rx="7" fill="#eee7da"/>
+      <g fill="#181319">
+        <rect x="0" width="44" height="115"/><rect x="92" width="44" height="115"/><rect x="184" width="44" height="115"/><rect x="276" width="44" height="115"/>
+      </g>
+      <g fill="#100d12">
+        <rect x="31" width="28" height="72"/><rect x="73" width="28" height="72"/><rect x="123" width="28" height="72"/><rect x="165" width="28" height="72"/><rect x="215" width="28" height="72"/><rect x="257" width="28" height="72"/><rect x="307" width="28" height="72"/>
+      </g>
+    </g>
+    <path d="M90 130C128 84 163 122 196 153M318 130C280 84 245 122 212 153" fill="none" stroke="#d9a85f" stroke-width="8" stroke-linecap="round"/>
+    <circle cx="204" cy="164" r="16" fill="#6f2033"/>
+  </g>
+</svg>
